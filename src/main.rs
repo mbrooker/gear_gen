@@ -111,7 +111,7 @@ fn pass_at_depth(opt: &Opt, file: &mut File, depth: f64) -> Result<()> {
     // Clearance (in mm) away from the stock where we move at feed rate
     let clearance = 4.0;
 
-    let clearance_theta = (2.0 * clearance / opt.cutter_dia).asin();
+    let clearance_theta = (1.0 - 2.0 * clearance / opt.cutter_dia).acos();
     let x_clearance = (opt.cutter_dia / 2.0) * clearance_theta.tan();
 
     let y_pos = (opt.teeth as f64 + 2.0) * opt.module / 2.0 // Stock radius
