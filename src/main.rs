@@ -95,6 +95,14 @@ G30 (Go Home Before Starting)
     Ok(())
 }
 
+fn trailer(_opt: &Opt, file: &mut File) -> Result<()> {
+    write!(file, "M9 (Coolant off)\n")?;
+    write!(file, "M5 (Spindle off)\n")?;
+    write!(file, "M30\n")?;
+
+    Ok(())
+}
+
 fn pass_at_depth(opt: &Opt, file: &mut File, depth: f64) -> Result<()> {
     let y_pos = (opt.teeth as f64 + 2.0)*opt.module + opt.cutter_dia/2.0 - depth;
     gcode_comment(file, &format!("Pass at depth {}", depth))?;
@@ -136,6 +144,16 @@ fn cut_tooth(opt: &Opt, file: &mut File, angle: f64) -> Result<()> {
     Ok(())
 }
 
+fn cut_teeth(opt: &Opt, file: &mut File) -> Result<()> {
+    let tooth_angle = 360.0 / opt.teeth as f64;
+
+    for i in 0..opt.teeth {
+        cut_tooth(opt, file, i as f64 * tooth_angle)?;
+    }
+
+    Ok(())
+}
+
 fn help_text(opt: &Opt) {
     println!("Before cut:
         - Create stock with OD {}mm
@@ -151,6 +169,8 @@ fn main() -> Result<()> {
         .open(&opt.output)?;
 
     preamble(&opt, &mut file)?;
+    cut_teeth(&opt, &mut file)?;
+    trailer(&opt, &mut file)?;
 
     Ok(())
 }
