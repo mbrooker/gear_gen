@@ -130,16 +130,20 @@ fn cut_tooth(opt: &Opt, file: &mut File, angle: f64) -> Result<()> {
     
     // Total depth varies from source to source.
     // Here, I'm using the formula from the Machinery's Handbook, 31st Edition, "Module System Gear Design"
-    let mut depth = 2.157 * opt.module;
+    let total_depth = 2.157 * opt.module;
+
+    let mut depth = 0.0;
+
     // Take passes until we've consumed the whole depth.
     // TODO: Avoid making the last pass two small, by implementing a minimum pass depth too.
-    while depth > 0.0 {
-        pass_at_depth(opt, file, depth.min(opt.max_depth))?;
-        depth -= opt.max_depth;
+    while depth < total_depth {
+        depth += opt.max_depth.min(total_depth - depth);
+        pass_at_depth(opt, file, depth)?;
+    
     }
 
     // Go home between teeth
-    write!(file, "G30\n")?;
+    write!(file, "G30\n\n")?;
 
     Ok(())
 }
@@ -148,6 +152,7 @@ fn cut_teeth(opt: &Opt, file: &mut File) -> Result<()> {
     let tooth_angle = 360.0 / opt.teeth as f64;
 
     for i in 0..opt.teeth {
+        gcode_comment(file, &format!("Tooth {} of {}", i+1, opt.teeth))?;
         cut_tooth(opt, file, i as f64 * tooth_angle)?;
     }
 
