@@ -20,11 +20,11 @@ struct Opt {
     cutter_dia: f64,
 
     /// Cutter RPM
-    #[structopt(long, default_value = "500")]
+    #[structopt(long, default_value = "650")]
     rpm: f64,
 
     /// Feed rate, in mm/min
-    #[structopt(long, default_value = "50")]
+    #[structopt(long, default_value = "60")]
     feed: f64,
 
     /// Name for the job
@@ -108,12 +108,18 @@ fn trailer(_opt: &Opt, file: &mut File) -> Result<()> {
 }
 
 fn pass_at_depth(opt: &Opt, file: &mut File, depth: f64) -> Result<()> {
+    // Clearance (in mm) away from the stock where we move at feed rate
+    let clearance = 4.0;
+
+    let clearance_theta = (2.0 * clearance / opt.cutter_dia).asin();
+    let x_clearance = (opt.cutter_dia / 2.0) * clearance_theta.tan();
+
     let y_pos = (opt.teeth as f64 + 2.0) * opt.module / 2.0 // Stock radius
         + opt.cutter_dia / 2.0 // Plus cutter radius
         - depth; // Minus depth of cut
     gcode_comment(file, &format!("Pass at depth {}", depth))?;
-    // Go to our starting point, to the right of the stock
-    writeln!(file, "G0 X{} Y{}", opt.cutter_dia / 2.0, y_pos)?;
+    // Rapid to our starting point, to the right of the stock
+    writeln!(file, "G0 X{} Y{}", x_clearance, y_pos)?;
     writeln!(file, "G0 Z0.")?;
 
     // Feed into the stock, cutting as we go
@@ -121,10 +127,12 @@ fn pass_at_depth(opt: &Opt, file: &mut File, depth: f64) -> Result<()> {
 
     // Feed out of the stock, moving in Y
     // TODO: This feed-out should probably be radiused, to avoid backlash issues
-    writeln!(file, "G1 Y{} F{}", y_pos + 10.0, opt.feed)?;
+    writeln!(file, "G1 Y{} F{}", y_pos + clearance, opt.feed)?;
+    // Then rapid a little bit straight out before we do the cross move
+    writeln!(file, "G0 Y{}", y_pos + clearance + 10.0)?;
 
     // Go back to where we started, in two moves, first X then Y to make sure we have enough clearance
-    writeln!(file, "G0 X{}", opt.cutter_dia / 2.0)?;
+    writeln!(file, "G0 X{}", x_clearance)?;
     writeln!(file, "G0 Y{}", y_pos)?;
 
     Ok(())
