@@ -52,13 +52,13 @@ struct Opt {
 }
 
 fn gcode_comment(file: &mut File, s: &str) -> Result<()> {
-    write!(file, "({})\n", s)
+    writeln!(file, "({})", s)
 }
 
 fn preamble(opt: &Opt, file: &mut File) -> Result<()> {
     // Print out the name as a comment on the first line, if set
     if let Some(name) = &opt.name {
-        gcode_comment(file, &name)?;
+        gcode_comment(file, name)?;
     }
     // Comment with tool information
     gcode_comment(
@@ -86,14 +86,14 @@ G30 (Go Home Before Starting)
     // Print the tool mode preamble, choosing the tool,
     // enabling length compensation,
     // and executing the tool change cycle
-    write!(file, "T{} G43 H{} M6\n", opt.tool, opt.tool)?;
+    writeln!(file, "T{} G43 H{} M6", opt.tool, opt.tool)?;
 
     // Print the Speed preamble, and turn on the spindle
-    write!(file, "S{} M3\n", opt.rpm)?;
+    writeln!(file, "S{} M3", opt.rpm)?;
 
     // If chosen, start coolant flowing
     if opt.coolant {
-        write!(file, "M8\n")?;
+        writeln!(file, "M8")?;
     }
 
     Ok(())
@@ -119,7 +119,7 @@ fn pass_at_depth(opt: &Opt, file: &mut File, depth: f64) -> Result<()> {
         - depth; // Minus depth of cut
     gcode_comment(file, &format!("Pass at depth {}", depth))?;
     // Rapid to our starting point, to the right of the stock
-    writeln!(file, "G0 X{} Y{}", x_clearance, y_pos)?;
+    writeln!(file, "G0 X{:.4} Y{}", x_clearance, y_pos)?;
     writeln!(file, "G0 Z0.")?;
 
     // Feed into the stock, cutting as we go
@@ -132,7 +132,7 @@ fn pass_at_depth(opt: &Opt, file: &mut File, depth: f64) -> Result<()> {
     writeln!(file, "G0 Y{}", y_pos + clearance + 10.0)?;
 
     // Go back to where we started, in two moves, first X then Y to make sure we have enough clearance
-    writeln!(file, "G0 X{}", x_clearance)?;
+    writeln!(file, "G0 X{:.4}", x_clearance)?;
     writeln!(file, "G0 Y{}", y_pos)?;
 
     Ok(())
@@ -140,7 +140,7 @@ fn pass_at_depth(opt: &Opt, file: &mut File, depth: f64) -> Result<()> {
 
 fn cut_tooth(opt: &Opt, file: &mut File, angle: f64) -> Result<()> {
     // First, turn the rotary axis to the right angle, rapid
-    write!(file, "G0 A{}\n", angle)?;
+    writeln!(file, "G0 A{:.4}", angle)?;
 
     // Total depth varies from source to source.
     // Here, I'm using the formula from the Machinery's Handbook, 31st Edition, "Module System Gear Design"
@@ -149,10 +149,19 @@ fn cut_tooth(opt: &Opt, file: &mut File, angle: f64) -> Result<()> {
     let mut depth = 0.0;
 
     // Take passes until we've consumed the whole depth.
-    // TODO: Avoid making the last pass two small, by implementing a minimum pass depth too.
     while depth < total_depth {
-        depth += opt.max_depth.min(total_depth - depth);
-        pass_at_depth(opt, file, depth)?;
+        let remaining = total_depth - depth;
+        if remaining > 2.0 * opt.max_depth {
+            // Make max_depth passes until we're within 2*max_depth of the final depth
+            depth += opt.max_depth;
+            pass_at_depth(opt, file, depth)?;
+        } else {
+            // Then finish off with two equal passes of the remaining depth
+            depth += remaining / 2.0;
+            pass_at_depth(opt, file, depth)?;
+            depth += remaining / 2.0;
+            pass_at_depth(opt, file, total_depth)?;
+        }
     }
 
     // Go home between teeth
