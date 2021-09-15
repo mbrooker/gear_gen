@@ -1,13 +1,13 @@
+use std::fs::{File, OpenOptions};
+use std::io::{Result, Write};
 use std::path::PathBuf;
 use structopt::StructOpt;
-use std::fs::{OpenOptions, File};
-use std::io::{Write, Result};
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "gear_gen", about = "A simple spur gear generator")]
 struct Opt {
     /// Gear module, must match cutter module
-    #[structopt(short, long, default_value="1")]
+    #[structopt(short, long, default_value = "1")]
     module: f64,
 
     /// Number of gear teeth
@@ -15,15 +15,15 @@ struct Opt {
     teeth: u32,
 
     /// Diameter of cutter, in mm
-    #[structopt(long, default_value="50")]
+    #[structopt(long, default_value = "50")]
     cutter_dia: f64,
 
     /// Cutter RPM
-    #[structopt(long, default_value="500")]
+    #[structopt(long, default_value = "500")]
     rpm: f64,
 
     /// Feed rate, in mm/min
-    #[structopt(long, default_value="50")]
+    #[structopt(long, default_value = "50")]
     feed: f64,
 
     /// Name for the job
@@ -31,7 +31,7 @@ struct Opt {
     name: Option<String>,
 
     /// Tool number for the cut
-    #[structopt(long, default_value="1")]
+    #[structopt(long, default_value = "1")]
     tool: u32,
 
     /// Width of the gear to cut
@@ -39,7 +39,7 @@ struct Opt {
     width: f64,
 
     /// Max depth to cut, in mm
-    #[structopt(long, default_value="0.5")]
+    #[structopt(long, default_value = "0.5")]
     max_depth: f64,
 
     /// Output file for the resulting G code
@@ -57,11 +57,14 @@ fn gcode_comment(file: &mut File, s: &str) -> Result<()> {
 fn preamble(opt: &Opt, file: &mut File) -> Result<()> {
     // Print out the name as a comment on the first line, if set
     if let Some(name) = &opt.name {
-       gcode_comment(file, &name)?;
+        gcode_comment(file, &name)?;
     }
     // Comment with tool information
-    gcode_comment(file, &format!("T{} D={} - gear mill", opt.tool, opt.cutter_dia))?;
-    
+    gcode_comment(
+        file,
+        &format!("T{} D={} - gear mill", opt.tool, opt.cutter_dia),
+    )?;
+
     // Preamble to set the machine into a reasonable mode
     let preamble_str = "
 G90 (Absolute)
@@ -79,7 +82,7 @@ G21 (Metric)
 G30 (Go Home Before Starting)
     ";
     write!(file, "{}\n\n", preamble_str)?;
-    // Print the tool mode preamble, choosing the tool, 
+    // Print the tool mode preamble, choosing the tool,
     // enabling length compensation,
     // and executing the tool change cycle
     write!(file, "T{} G43 H{} M6\n", opt.tool, opt.tool)?;
@@ -104,10 +107,10 @@ fn trailer(_opt: &Opt, file: &mut File) -> Result<()> {
 }
 
 fn pass_at_depth(opt: &Opt, file: &mut File, depth: f64) -> Result<()> {
-    let y_pos = (opt.teeth as f64 + 2.0)*opt.module + opt.cutter_dia/2.0 - depth;
+    let y_pos = (opt.teeth as f64 + 2.0) * opt.module + opt.cutter_dia / 2.0 - depth;
     gcode_comment(file, &format!("Pass at depth {}", depth))?;
     // Go to our starting point, to the right of the stock
-    write!(file, "G0 X{} Y{}\n", opt.cutter_dia/2.0, y_pos)?;
+    write!(file, "G0 X{} Y{}\n", opt.cutter_dia / 2.0, y_pos)?;
     write!(file, "G0 Z0.\n")?;
 
     // Feed into the stock, cutting as we go
@@ -118,7 +121,7 @@ fn pass_at_depth(opt: &Opt, file: &mut File, depth: f64) -> Result<()> {
     write!(file, "G1 Y{} F{}\n", y_pos + 10.0, opt.feed)?;
 
     // Go back to where we started, in two moves, first X then Y to make sure we have enough clearance
-    write!(file, "G0 X{}\n", opt.cutter_dia/2.0)?;
+    write!(file, "G0 X{}\n", opt.cutter_dia / 2.0)?;
     write!(file, "G0 Y{}\n", y_pos)?;
 
     Ok(())
@@ -127,7 +130,7 @@ fn pass_at_depth(opt: &Opt, file: &mut File, depth: f64) -> Result<()> {
 fn cut_tooth(opt: &Opt, file: &mut File, angle: f64) -> Result<()> {
     // First, turn the rotary axis to the right angle, rapid
     write!(file, "G0 A{}\n", angle)?;
-    
+
     // Total depth varies from source to source.
     // Here, I'm using the formula from the Machinery's Handbook, 31st Edition, "Module System Gear Design"
     let total_depth = 2.157 * opt.module;
@@ -139,7 +142,6 @@ fn cut_tooth(opt: &Opt, file: &mut File, angle: f64) -> Result<()> {
     while depth < total_depth {
         depth += opt.max_depth.min(total_depth - depth);
         pass_at_depth(opt, file, depth)?;
-    
     }
 
     // Go home between teeth
@@ -152,7 +154,7 @@ fn cut_teeth(opt: &Opt, file: &mut File) -> Result<()> {
     let tooth_angle = 360.0 / opt.teeth as f64;
 
     for i in 0..opt.teeth {
-        gcode_comment(file, &format!("Tooth {} of {}", i+1, opt.teeth))?;
+        gcode_comment(file, &format!("Tooth {} of {}", i + 1, opt.teeth))?;
         cut_tooth(opt, file, i as f64 * tooth_angle)?;
     }
 
@@ -160,16 +162,19 @@ fn cut_teeth(opt: &Opt, file: &mut File) -> Result<()> {
 }
 
 fn help_text(opt: &Opt) {
-    println!("Before cut:
+    println!(
+        "Before cut:
         - Create stock with OD {}mm
         - Set home to center of right face of stock",
-    (opt.teeth+2) as f64*opt.module)
+        (opt.teeth + 2) as f64 * opt.module
+    )
 }
 
 fn main() -> Result<()> {
     let opt = Opt::from_args();
     help_text(&opt);
-    let mut file = OpenOptions::new().write(true)
+    let mut file = OpenOptions::new()
+        .write(true)
         .create_new(true)
         .open(&opt.output)?;
 
