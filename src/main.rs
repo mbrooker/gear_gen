@@ -100,30 +100,32 @@ G30 (Go Home Before Starting)
 }
 
 fn trailer(_opt: &Opt, file: &mut File) -> Result<()> {
-    write!(file, "M9 (Coolant off)\n")?;
-    write!(file, "M5 (Spindle off)\n")?;
-    write!(file, "M30\n")?;
+    writeln!(file, "M9 (Coolant off)")?;
+    writeln!(file, "M5 (Spindle off)")?;
+    writeln!(file, "M30")?;
 
     Ok(())
 }
 
 fn pass_at_depth(opt: &Opt, file: &mut File, depth: f64) -> Result<()> {
-    let y_pos = (opt.teeth as f64 + 2.0) * opt.module + opt.cutter_dia / 2.0 - depth;
+    let y_pos = (opt.teeth as f64 + 2.0) * opt.module / 2.0 // Stock radius
+        + opt.cutter_dia / 2.0 // Plus cutter radius
+        - depth; // Minus depth of cut
     gcode_comment(file, &format!("Pass at depth {}", depth))?;
     // Go to our starting point, to the right of the stock
-    write!(file, "G0 X{} Y{}\n", opt.cutter_dia / 2.0, y_pos)?;
-    write!(file, "G0 Z0.\n")?;
+    writeln!(file, "G0 X{} Y{}", opt.cutter_dia / 2.0, y_pos)?;
+    writeln!(file, "G0 Z0.")?;
 
     // Feed into the stock, cutting as we go
-    write!(file, "G1 X{} F{}\n", -opt.width, opt.feed)?;
+    writeln!(file, "G1 X{} F{}", -opt.width, opt.feed)?;
 
     // Feed out of the stock, moving in Y
     // TODO: This feed-out should probably be radiused, to avoid backlash issues
-    write!(file, "G1 Y{} F{}\n", y_pos + 10.0, opt.feed)?;
+    writeln!(file, "G1 Y{} F{}", y_pos + 10.0, opt.feed)?;
 
     // Go back to where we started, in two moves, first X then Y to make sure we have enough clearance
-    write!(file, "G0 X{}\n", opt.cutter_dia / 2.0)?;
-    write!(file, "G0 Y{}\n", y_pos)?;
+    writeln!(file, "G0 X{}", opt.cutter_dia / 2.0)?;
+    writeln!(file, "G0 Y{}", y_pos)?;
 
     Ok(())
 }
