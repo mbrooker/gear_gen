@@ -7,3 +7,7 @@ edition = "2018"
 
 [dependencies]
 structopt = { version = "0.3" }
+
+[lib]
+name = "gcode"
+path = "src/lib/lib.rs"
