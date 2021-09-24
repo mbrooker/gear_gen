@@ -1,9 +1,8 @@
 ///! G-Code generator for cutting fluted mill tools
 
-///! For an example of where I use this, see http://www.helicron.net/workshop/gearcutting/gear_cutter/ 
+///! For an example of where I use this, see http://www.helicron.net/workshop/gearcutting/gear_cutter/
 ///! We don't do the actual tooth cutting here (yet), that still needs to be done on a lathe. This just turns the round
 ///! hobber into a tool with sharp teeth and back relief behind the teeth.
-
 use gcode::{g0, g1, gcode_comment, preamble, trailer, xyza, zaf, zf};
 use std::fs::{File, OpenOptions};
 use std::io::{Result, Write};
@@ -17,11 +16,11 @@ use structopt::StructOpt;
 )]
 struct Opt {
     /// Number of flutes in the cutter
-    #[structopt(short, long)]
+    #[structopt(long)]
     flutes: u32,
 
     /// Max depth of each flute, in mm
-    #[structopt(short, long)]
+    #[structopt(long)]
     depth: f64,
 
     /// Unrelieved angle, i.e. the angle of each tooth in A before the back relief starts, in degrees
@@ -33,7 +32,7 @@ struct Opt {
     len: f64,
 
     /// Diameter of cutter we're creating, in mm
-    #[structopt(long, default_value = "20")]
+    #[structopt(long)]
     dia: f64,
 
     /// Tool RPM
@@ -53,11 +52,11 @@ struct Opt {
     tool: u32,
 
     /// Diameter of tool, in mm
-    #[structopt(long, default_value = "20")]
+    #[structopt(long, default_value = "3")]
     tool_dia: f64,
 
     /// Max cutting stepdown, per pass, in mm
-    #[structopt(long, default_value = "1")]
+    #[structopt(long, default_value = "3")]
     max_stepdown: f64,
 
     /// Output file for the resulting G code

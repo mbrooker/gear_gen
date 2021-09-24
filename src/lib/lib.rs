@@ -119,26 +119,30 @@ pub fn zaf(z: f64, a: f64, feed: f64) -> PosAndFeed {
     }
 }
 
+/// Emit a gcode parameter value, if `ov` is `Some`.
+/// To make the gcode human-friendly, numbers that round nicely are printed in their minimal form.
+fn g_val(file: &mut File, name: &str, ov: Option<f64>) -> Result<()> {
+    if let Some(v) = ov {
+        if v == v.round() {
+            write!(file, " {}{}.", name, v)
+        } else {
+            write!(file, " {}{:.4}", name, v)
+        }
+    } else {
+        Ok(())
+    }
+}
+
 fn g_cmd(file: &mut File, g: &str, p: PosAndFeed) -> Result<()> {
     if p.x.is_none() && p.y.is_none() && p.z.is_none() {
         panic!("Refusing to make illegal {}", g);
     }
     write!(file, "{}", g)?;
-    if let Some(ox) = p.x {
-        write!(file, " X{:4}", ox)?;
-    }
-    if let Some(oy) = p.y {
-        write!(file, " Y{:4}", oy)?;
-    }
-    if let Some(oz) = p.z {
-        write!(file, " Z{:4}", oz)?;
-    }
-    if let Some(oa) = p.a {
-        write!(file, " A{:4}", oa)?;
-    }
-    if let Some(ofeed) = p.feed {
-        write!(file, " F{:4}", ofeed)?;
-    }
+    g_val(file, "X", p.x)?;
+    g_val(file, "Y", p.y)?;
+    g_val(file, "Z", p.z)?;
+    g_val(file, "A", p.a)?;
+    g_val(file, "F", p.feed)?;
     writeln!(file)?;
     Ok(())
 }
