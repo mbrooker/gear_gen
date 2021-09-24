@@ -64,7 +64,7 @@ struct Opt {
     max_stepover: f64,
 
     /// Spiral angle. 0 for straight flutes, higher values for spiral flutes. In degrees
-    #[structopt(long, default_value = "15")]
+    #[structopt(long, default_value = "25")]
     spiral_angle: f64,
 
     /// Output file for the resulting G code
@@ -110,7 +110,7 @@ fn cut_flute(opt: &Opt, file: &mut File, angle: f64) -> Result<()> {
     let mut x = 0.0;
     // Take passes until we've consumed the whole X distance
     while x > -opt.len {
-        let angle_on_spiral = angle + x * opt.spiral_angle.tan();
+        let angle_on_spiral = angle + 360.0 * x * opt.spiral_angle.to_radians().tan() / (std::f64::consts::PI * opt.dia);
         let mut depth = 0.0;
         // Take passes until we've consumed the whole target depth
         while depth < opt.depth {
