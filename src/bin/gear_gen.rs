@@ -1,5 +1,5 @@
+///! G-Code generator for cutting simple spur gears on a 4th axis, using an involute gear cutter
 use gcode::{gcode_comment, preamble, trailer};
-/// G-Code generator for cutting simple spur gears on a 4th axis, using an involute gear cutter
 use std::fs::{File, OpenOptions};
 use std::io::{Result, Write};
 use std::path::PathBuf;

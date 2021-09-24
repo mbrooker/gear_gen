@@ -60,3 +60,93 @@ G30 (Go Home Before Starting)
 
     Ok(())
 }
+
+pub struct PosAndFeed {
+    x: Option<f64>,
+    y: Option<f64>,
+    z: Option<f64>,
+    a: Option<f64>,
+    feed: Option<f64>,
+}
+
+pub fn x(x: f64) -> PosAndFeed {
+    PosAndFeed {
+        x: Some(x),
+        y: None,
+        z: None,
+        a: None,
+        feed: None,
+    }
+}
+
+pub fn xy(x: f64, y: f64) -> PosAndFeed {
+    PosAndFeed {
+        x: Some(x),
+        y: Some(y),
+        z: None,
+        a: None,
+        feed: None,
+    }
+}
+
+pub fn xyza(x: f64, y: f64, z: f64, a: f64) -> PosAndFeed {
+    PosAndFeed {
+        x: Some(x),
+        y: Some(y),
+        z: Some(z),
+        a: Some(a),
+        feed: None,
+    }
+}
+
+pub fn zf(z: f64, feed: f64) -> PosAndFeed {
+    PosAndFeed {
+        x: None,
+        y: None,
+        z: Some(z),
+        a: None,
+        feed: Some(feed),
+    }
+}
+
+pub fn zaf(z: f64, a: f64, feed: f64) -> PosAndFeed {
+    PosAndFeed {
+        x: None,
+        y: None,
+        z: Some(z),
+        a: Some(a),
+        feed: Some(feed),
+    }
+}
+
+fn g_cmd(file: &mut File, g: &str, p: PosAndFeed) -> Result<()> {
+    if p.x.is_none() && p.y.is_none() && p.z.is_none() {
+        panic!("Refusing to make illegal {}", g);
+    }
+    write!(file, "{}", g)?;
+    if let Some(ox) = p.x {
+        write!(file, " X{:4}", ox)?;
+    }
+    if let Some(oy) = p.y {
+        write!(file, " Y{:4}", oy)?;
+    }
+    if let Some(oz) = p.z {
+        write!(file, " Z{:4}", oz)?;
+    }
+    if let Some(oa) = p.a {
+        write!(file, " A{:4}", oa)?;
+    }
+    if let Some(ofeed) = p.feed {
+        write!(file, " F{:4}", ofeed)?;
+    }
+    writeln!(file)?;
+    Ok(())
+}
+
+pub fn g0(file: &mut File, p: PosAndFeed) -> Result<()> {
+    g_cmd(file, "G0", p)
+}
+
+pub fn g1(file: &mut File, p: PosAndFeed) -> Result<()> {
+    g_cmd(file, "G1", p)
+}
