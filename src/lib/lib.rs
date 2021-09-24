@@ -1,11 +1,10 @@
-use std::fs::File;
 use std::io::{Result, Write};
 
-pub fn gcode_comment(file: &mut File, s: &str) -> Result<()> {
+pub fn gcode_comment(file: &mut dyn Write, s: &str) -> Result<()> {
     writeln!(file, "({})", s)
 }
 
-pub fn trailer(file: &mut File) -> Result<()> {
+pub fn trailer(file: &mut dyn Write) -> Result<()> {
     writeln!(file, "M9 (Coolant off)")?;
     writeln!(file, "M5 (Spindle off)")?;
     writeln!(file, "M30")?;
@@ -19,7 +18,7 @@ pub fn preamble(
     cutter_dia: f64,
     rpm: f64,
     coolant: bool,
-    file: &mut File,
+    file: &mut dyn Write,
 ) -> Result<()> {
     // Print out the name as a comment on the first line, if set
     if let Some(name) = &name {
@@ -121,7 +120,7 @@ pub fn zaf(z: f64, a: f64, feed: f64) -> PosAndFeed {
 
 /// Emit a gcode parameter value, if `ov` is `Some`.
 /// To make the gcode human-friendly, numbers that round nicely are printed in their minimal form.
-fn g_val(file: &mut File, name: &str, ov: Option<f64>) -> Result<()> {
+fn g_val(file: &mut dyn Write, name: &str, ov: Option<f64>) -> Result<()> {
     if let Some(v) = ov {
         if (v - v.round()).abs() < f64::EPSILON {
             write!(file, " {}{}.", name, v)
@@ -133,7 +132,7 @@ fn g_val(file: &mut File, name: &str, ov: Option<f64>) -> Result<()> {
     }
 }
 
-fn g_cmd(file: &mut File, g: &str, p: PosAndFeed) -> Result<()> {
+fn g_move_linear(file: &mut dyn Write, g: &str, p: PosAndFeed) -> Result<()> {
     if p.x.is_none() && p.y.is_none() && p.z.is_none() {
         panic!("Refusing to make illegal {}", g);
     }
@@ -147,10 +146,23 @@ fn g_cmd(file: &mut File, g: &str, p: PosAndFeed) -> Result<()> {
     Ok(())
 }
 
-pub fn g0(file: &mut File, p: PosAndFeed) -> Result<()> {
-    g_cmd(file, "G0", p)
+pub fn g0(file: &mut dyn Write, p: PosAndFeed) -> Result<()> {
+    g_move_linear(file, "G0", p)
 }
 
-pub fn g1(file: &mut File, p: PosAndFeed) -> Result<()> {
-    g_cmd(file, "G1", p)
+pub fn g1(file: &mut dyn Write, p: PosAndFeed) -> Result<()> {
+    g_move_linear(file, "G1", p)
+}
+
+/// Enable inverse feed rate mode (G93)
+/// With inverse feed rate mode enabled, each non-rapid move needs to contain an `F` parameter.
+/// `F` is interpreted as the inverse of the feed time, in minutes. E.g. `F3.0` is interpreted
+/// as "complete this move in 20 seconds"
+pub fn inv_feed_g93(file: &mut dyn Write) -> Result<()> {
+    writeln!(file, "G93")
+}
+
+/// Enable units-per-minute feed rate mode (G94)
+pub fn standard_feed_g94(file: &mut dyn Write) -> Result<()> {
+    writeln!(file, "G94")
 }
