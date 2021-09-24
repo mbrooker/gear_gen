@@ -59,6 +59,14 @@ struct Opt {
     #[structopt(long, default_value = "3")]
     max_stepdown: f64,
 
+    /// Tool stepover, as a ratio of tool width (i.e. 0.5 steps over by half the tool diameter).
+    #[structopt(long, default_value = "0.25")]
+    max_stepover: f64,
+
+    /// Spiral angle. 0 for straight flutes, higher values for spiral flutes. In degrees
+    #[structopt(long, default_value = "15")]
+    spiral_angle: f64,
+
     /// Output file for the resulting G code
     #[structopt(short, long, parse(from_os_str))]
     output: PathBuf,
@@ -100,15 +108,17 @@ fn pass_at_depth(
 
 fn cut_flute(opt: &Opt, file: &mut File, angle: f64) -> Result<()> {
     let mut x = 0.0;
-    // Take passes until we've consumed the whole X distance, stepping over by the tool radius
+    // Take passes until we've consumed the whole X distance
     while x > -opt.len {
+        let angle_on_spiral = angle + x * opt.spiral_angle.tan();
         let mut depth = 0.0;
         // Take passes until we've consumed the whole target depth
         while depth < opt.depth {
             depth = (depth + opt.max_stepdown).clamp(0.0, opt.depth);
-            pass_at_depth(opt, file, x, depth, angle)?;
+            pass_at_depth(opt, file, x, depth, angle_on_spiral)?;
         }
-        x -= opt.tool_dia / 2.0;
+        // Move up the x axis by our stepover value
+        x -= opt.tool_dia * opt.max_stepover;
     }
 
     // Go home between teeth

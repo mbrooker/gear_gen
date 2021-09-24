@@ -123,7 +123,7 @@ pub fn zaf(z: f64, a: f64, feed: f64) -> PosAndFeed {
 /// To make the gcode human-friendly, numbers that round nicely are printed in their minimal form.
 fn g_val(file: &mut File, name: &str, ov: Option<f64>) -> Result<()> {
     if let Some(v) = ov {
-        if v == v.round() {
+        if (v - v.round()).abs() < f64::EPSILON {
             write!(file, " {}{}.", name, v)
         } else {
             write!(file, " {}{:.4}", name, v)
