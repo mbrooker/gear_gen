@@ -15,7 +15,7 @@ use structopt::StructOpt;
 #[derive(Debug, StructOpt)]
 #[structopt(
     name = "hobber",
-    about = "Generates tool paths to cut teeth into hobbers"
+    about = "Generates tool paths to cut flutes into tools"
 )]
 struct Opt {
     /// Number of flutes in the cutter

@@ -109,9 +109,6 @@ fn cut_tooth(opt: &Opt, file: &mut File, angle: f64) -> Result<()> {
         }
     }
 
-    // Go home between teeth
-    write!(file, "G30\n\n")?;
-
     Ok(())
 }
 
@@ -122,6 +119,9 @@ fn cut_teeth(opt: &Opt, file: &mut File) -> Result<()> {
         gcode_comment(file, &format!("Tooth {} of {}", i + 1, opt.teeth))?;
         cut_tooth(opt, file, i as f64 * tooth_angle)?;
     }
+
+    // Go home at the end
+    write!(file, "G30\n\n")?;
 
     Ok(())
 }
