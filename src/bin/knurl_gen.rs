@@ -2,7 +2,7 @@
 ///! This is designed for cutting with engraving or chamfering tools: a mill with a sharp end.
 ///! The included angle (and depth) of the teeth depends on the included angle of the tool.
 use gcode::{
-    g0, g1, gcode_comment, inv_feed_g93, preamble, standard_feed_g94, trailer, xyza, zaf, zf,
+    g0, g1, gcode_comment, inv_feed_g93, preamble, standard_feed_g94, trailer, xyza, zf, xf, xaf,
 };
 use std::f64::consts::PI;
 use std::fs::OpenOptions;
@@ -77,7 +77,57 @@ fn help_text(opt: &Opt) {
     )
 }
 
-fn cut_knurl(opt: &Opt, file: &mut dyn Write) -> Result<()> {
+/// Calculate the feed rate we need to tell the machine to get a real surface feed rate of `target_feed`, in units of
+/// 1/minutes (for G93 inverse feed rate mode)
+/// LinuxCNC says this about the way feed rate is interpreted during simultaneous multi-axis:
+///   "If any of XYZ are moving, F is in units per minute in the XYZ cartesian system, and all
+///    other axes (ABCUVW) move so as to start and stop in coordinated fashion."
+/// So we have to correct the feed rate we get from the machine to get the right actual feed at the tip of the tool. Doing
+///  that in a way that machines agree on seems hard, so instead we use G93 mode and let the machine figure out the
+///  XYZ and ABC feed rates.
+fn calc_feed_g93(opt: &Opt) -> f64 {
+    // How much we adjust the feed to compensate for simultaneous rotary motion
+    let cutting_path_length = opt.len / opt.spiral_angle.to_radians().cos(); 
+    cutting_path_length / opt.feed
+}
+
+fn cut_tooth(opt: &Opt, file: &mut dyn Write, teeth: usize, a_start: f64) -> Result<()> {
+    // Cutting a knurl consists of making a number of passes at different depths until we arrive at the final depth
+    
+    // How far away we want to keep the tool from the work when not cutting
+    let clearance = 4.0;
+
+    // We're always cutting along the `y` axis at y=0
+    let tool_y = 0.0;
+    let stock_top_z = opt.dia / 2.0;
+
+    let actual_tooth_width = (PI * opt.dia) / (teeth as f64);
+    let tooth_depth = (actual_tooth_width / 2.0) / (opt.tool_inc_angle.to_radians().tan());
+    let passes = (tooth_depth / opt.max_stepdown).ceil() as usize;
+    let actual_stepdown = tooth_depth / passes as f64;
+
+    // Calculate the ending angle for the spiral, in degrees
+    let a_end = a_start + 360.0 * opt.len * opt.spiral_angle.to_radians().tan() / (PI * opt.dia);
+
+
+    let cutting_feed = calc_feed_g93(opt);
+
+    for i in 0..passes {
+        let z = stock_top_z - actual_stepdown * i as f64;
+        g0(file, xyza(clearance, tool_y, stock_top_z + clearance, a_start))?;
+        // Plunge the tool to z depth. Shouldn't be cutting yet, but we're being a bit careful
+        g1(file, zf(z, opt.feed))?;
+        // Feed in along the x axis until the tool is about to make contact
+        g1(file, xf(0.1, opt.feed))?;
+
+        // Simultaneously move in X and A, cutting the actual path
+        inv_feed_g93(file)?;
+        g1(file, xaf(-opt.len, a_end, cutting_feed))?;
+        standard_feed_g94(file)?;
+
+        // Move out of the work in Z to the clearance height
+        g1(file, zf(stock_top_z + clearance, opt.feed))?;
+    }
 
     Ok(())
 
@@ -86,15 +136,13 @@ fn cut_knurl(opt: &Opt, file: &mut dyn Write) -> Result<()> {
 fn cut_knurls(opt: &Opt, file: &mut dyn Write) -> Result<()> {
     let circumference = PI * opt.dia;
     let teeth = (circumference / opt.pitch).floor() as usize;
-    let actual_tooth_width = circumference / (teeth as f64);
-    let tooth_depth = (actual_tooth_width / 2.0) / (opt.tool_inc_angle.tan());
+    let a_step = 360.0 / teeth as f64;
 
-    // How much we adjust the feed to compensate for simultaneous rotary motion
-    let feed_adjustment = opt.spiral_angle.cos(); 
+
 
     for i in 0..teeth {
         gcode_comment(file, &format!("Tooth {} of {}", i + 1, teeth))?;
-        cut_knurl(opt, file)?;
+        cut_tooth(opt, file, teeth, a_step * i as f64)?;
     }
 
     Ok(())
