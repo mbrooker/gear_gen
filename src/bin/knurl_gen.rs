@@ -109,11 +109,10 @@ fn cut_tooth(opt: &Opt, file: &mut dyn Write, teeth: usize, a_start: f64) -> Res
     // Calculate the ending angle for the spiral, in degrees
     let a_end = a_start + 360.0 * opt.len * opt.spiral_angle.to_radians().tan() / (PI * opt.dia);
 
-
     let cutting_feed = calc_feed_g93(opt);
 
     for i in 0..passes {
-        let z = stock_top_z - actual_stepdown * i as f64;
+        let z = stock_top_z - actual_stepdown * (i + 1) as f64;
         g0(file, xyza(clearance, tool_y, stock_top_z + clearance, a_start))?;
         // Plunge the tool to z depth. Shouldn't be cutting yet, but we're being a bit careful
         g1(file, zf(z, opt.feed))?;
