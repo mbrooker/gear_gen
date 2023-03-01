@@ -25,11 +25,12 @@ struct Opt {
     dia: f64,
 
     /// Tool RPM
-    #[structopt(long, default_value = "4500")]
+    // Feed and speed defaults for 1/4" carbide in annealed W1
+    #[structopt(long, default_value = "8000")]
     rpm: f64,
 
     /// Feed rate, in mm/min
-    #[structopt(long, default_value = "220")]
+    #[structopt(long, default_value = "180")]
     feed: f64,
 
     /// Name for the job
@@ -39,10 +40,6 @@ struct Opt {
     /// Tool number for the cut
     #[structopt(long, default_value = "1")]
     tool: u32,
-
-    /// Diameter of tool, in mm
-    #[structopt(long, default_value = "3.175")]
-    tool_dia: f64,
 
     /// Tool included angle, in degrees
     #[structopt(long, default_value = "60")]
@@ -97,16 +94,18 @@ fn cut_tooth(opt: &Opt, file: &mut dyn Write, teeth: usize, a_start: f64) -> Res
     // How far away we want to keep the tool from the work when not cutting
     let clearance = 4.0;
 
-    // We're always cutting along the `y` axis at y=0
+    // We're always cutting along the X axis at y=0
     let tool_y = 0.0;
     let stock_top_z = opt.dia / 2.0;
 
     let actual_tooth_width = (PI * opt.dia) / (teeth as f64);
     let tooth_depth = (actual_tooth_width / 2.0) / (opt.tool_inc_angle.to_radians().tan());
+
     let passes = (tooth_depth / opt.max_stepdown).ceil() as usize;
     let actual_stepdown = tooth_depth / passes as f64;
 
-    // Calculate the ending angle for the spiral, in degrees
+    // Calculate the ending angle for the spiral, in degrees. This is how much we turn the A axis
+    // while cutting
     let a_end = a_start + 360.0 * opt.len * opt.spiral_angle.to_radians().tan() / (PI * opt.dia);
 
     let cutting_feed = calc_feed_g93(opt);
@@ -119,13 +118,15 @@ fn cut_tooth(opt: &Opt, file: &mut dyn Write, teeth: usize, a_start: f64) -> Res
         // Feed in along the x axis until the tool is about to make contact
         g1(file, xf(0.1, opt.feed))?;
 
-        // Simultaneously move in X and A, cutting the actual path
+        // Simultaneously move in X and A, cutting the actual tooth
         inv_feed_g93(file)?;
         g1(file, xaf(-opt.len, a_end, cutting_feed))?;
         standard_feed_g94(file)?;
 
         // Move out of the work in Z to the clearance height
         g1(file, zf(stock_top_z + clearance, opt.feed))?;
+        // And rapid back to where we started
+        g0(file, xyza(clearance, tool_y, stock_top_z + clearance, a_start))?;
     }
 
     Ok(())
@@ -135,9 +136,8 @@ fn cut_tooth(opt: &Opt, file: &mut dyn Write, teeth: usize, a_start: f64) -> Res
 fn cut_knurls(opt: &Opt, file: &mut dyn Write) -> Result<()> {
     let circumference = PI * opt.dia;
     let teeth = (circumference / opt.pitch).floor() as usize;
+    println!("Requested {} teeth, actually cutting {}", circumference / opt.pitch, teeth);
     let a_step = 360.0 / teeth as f64;
-
-
 
     for i in 0..teeth {
         gcode_comment(file, &format!("Tooth {} of {}", i + 1, teeth))?;
@@ -160,7 +160,7 @@ fn main() -> Result<()> {
     preamble(
         &opt.name,
         opt.tool,
-        opt.tool_dia,
+        &format!("T{} {} degree chamfer mill or engraver", opt.tool, opt.tool_inc_angle),
         opt.rpm,
         opt.coolant,
         &mut file,

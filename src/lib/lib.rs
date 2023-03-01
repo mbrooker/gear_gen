@@ -15,7 +15,7 @@ pub fn trailer(file: &mut dyn Write) -> Result<()> {
 pub fn preamble(
     name: &Option<String>,
     tool: u32,
-    cutter_dia: f64,
+    tool_comment: &str,
     rpm: f64,
     coolant: bool,
     file: &mut dyn Write,
@@ -25,7 +25,7 @@ pub fn preamble(
         gcode_comment(file, name)?;
     }
     // Comment with tool information
-    gcode_comment(file, &format!("T{} D={} - gear mill", tool, cutter_dia))?;
+    gcode_comment(file, tool_comment)?;
 
     // Preamble to set the machine into a reasonable mode
     let preamble_str = "

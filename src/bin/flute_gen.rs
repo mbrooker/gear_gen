@@ -184,7 +184,7 @@ fn main() -> Result<()> {
     preamble(
         &opt.name,
         opt.tool,
-        opt.tool_dia,
+        &format!("T{} D={} ball mill", opt.tool, opt.tool_dia),
         opt.rpm,
         opt.coolant,
         &mut file,
