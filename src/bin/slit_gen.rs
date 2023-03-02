@@ -1,7 +1,7 @@
 //! Generate a tool path for a slitting saw
 
 use gcode::{
-    g0, g1, gcode_comment, inv_feed_g93, preamble, standard_feed_g94, trailer, xyza, zf, xf, xaf,
+    g0, g1, gcode_comment, preamble, trailer, x, xyz, xf,
 };
 use std::f64::consts::PI;
 use std::fs::OpenOptions;
@@ -24,9 +24,9 @@ struct Opt {
     #[structopt(long, default_value = "40")]
     speed: f64,
 
-    /// Feed rate, in mm/tooth
-    #[structopt(long, default_value = "0.0254")]
-    feed: f64,
+    /// Feed rate per tooth, in mm/tooth
+    #[structopt(long, default_value = "0.012")]
+    feed_per_tooth: f64,
 
     /// Tool teeth
     #[structopt(long, default_value = "30")]
@@ -37,24 +37,24 @@ struct Opt {
     name: Option<String>,
 
     /// Tool number for the cut
-    #[structopt(long, default_value = "1")]
+    #[structopt(long, default_value = "17")]
     tool: u32,
 
     /// Tool diameter, in mm
     #[structopt(long, default_value = "76.2")]
     tool_dia: f64,
 
-    /// Knurling tool pitch (in mm per tooth). Typical tools vary from 1.6 (15tpi) to 0.75 (33tpi). 
-    #[structopt(long, default_value="1")]
-    pitch: f64,
+    /// Tool thickness, in mm
+    #[structopt(long, default_value = "1.55")]
+    tool_thick: f64,
 
-    /// Max cutting stepdown, per pass, in mm
-    #[structopt(long, default_value = "0.25")]
-    max_stepdown: f64,
+    /// Height of the cut, along -Z in mm, for making multiple passes with the saw. Leave unset for a single cut.
+    #[structopt(long)]
+    height: Option<f64>,
 
-    /// Spiral angle (degrees). 0 for straight-cut knurler, 45 for diamond.
-    #[structopt(long, default_value = "45")]
-    spiral_angle: f64,
+    /// Depth of the cut, along the X axis, mm
+    #[structopt(long)]
+    depth: f64,
 
     /// Output file for the resulting G code
     #[structopt(short, long, parse(from_os_str))]
@@ -64,15 +64,70 @@ struct Opt {
     coolant: bool,
 }
 
-fn help_text(opt: &Opt) {
+fn help_text() {
     println!(
-        "Before cut:"
+        "Before cut:\n
+            Align top of blade with top of cut.
+            Set x, y, and z home along -X from cut"
     )
+}
+
+fn make_cut_pass(opt: &Opt, file: &mut dyn Write, z: f64, rpm: f64) -> Result<()> {
+    let feed = opt.feed_per_tooth * rpm * opt.tool_teeth as f64;
+    let z_clear = 4.0;
+
+    assert!(z <= 0.0);
+
+    gcode_comment(file, &format!("Making pass at z={}", z))?;
+    // Rapid to our home
+    g0(file, xyz(0.0, 0.0, z+z_clear))?;
+    // Feed in slowly along Z, to give us an opportunity to panic
+    g1(file, xyz(0.0,0.0, z))?;
+    // Feed in along the X axis
+    g1(file, xf(opt.depth, feed))?;
+    // Feed out along the X axis a little bit at the feed rate
+    g1(file, xf(opt.depth - 1.0, feed))?;
+    // Now rapid back to where we started
+    g0(file, x(0.0))?;
+
+    Ok(())
+}
+
+fn make_cut(opt: &Opt, file: &mut dyn Write, rpm: f64) -> Result<()> {
+    let height = opt.height.unwrap_or(0.0);
+    // First pass at the top height
+    make_cut_pass(opt, file, 0.0, rpm)?;
+
+    let bottom = height - opt.tool_thick;
+
+    if height > opt.tool_thick {
+        // Second pass at the bottom height
+        make_cut_pass(opt, file, -bottom, rpm)?;
+    }
+
+    if height > opt.tool_thick * 2.0 {
+        // Then make passes between the two until all the material has been cut away
+        let start = opt.tool_thick;
+        assert!(bottom > start);
+        let passes = ((bottom - start) / opt.tool_thick).ceil();
+        println!("end {} start {} passes {}", bottom, start, passes);
+       
+        for i in 0..(passes as usize) {
+            let z = start + i as f64 * (bottom-start)/passes;
+            assert!(z < bottom);
+            make_cut_pass(opt, file, -z, rpm)?;
+        }
+    }
+
+    Ok(())
+
+
+
 }
 
 fn main() -> Result<()> {
     let opt = Opt::from_args();
-    help_text(&opt);
+    help_text();
     let mut file = BufWriter::new(
         OpenOptions::new()
             .write(true)
@@ -86,12 +141,12 @@ fn main() -> Result<()> {
     preamble(
         &opt.name,
         opt.tool,
-        &format!("T{} {}mm {} tooth slitting saw", opt.tool, opt.tool_dia, opt.tool_teeth),
+        &format!("T{} {}mm dia {}mm thick {} tooth slitting saw", opt.tool, opt.tool_dia, opt.tool_thick, opt.tool_teeth),
         rpm,
         opt.coolant,
         &mut file,
     )?;
-    
+    make_cut(&opt, &mut file, rpm)?;
     trailer(&mut file)?;
 
     file.flush()
