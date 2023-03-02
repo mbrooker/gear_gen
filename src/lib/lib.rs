@@ -118,7 +118,6 @@ pub fn xyza(x: f64, y: f64, z: f64, a: f64) -> PosAndFeed {
     }
 }
 
-
 pub fn xyz(x: f64, y: f64, z: f64) -> PosAndFeed {
     PosAndFeed {
         x: Some(x),

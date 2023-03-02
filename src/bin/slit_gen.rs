@@ -1,8 +1,6 @@
 //! Generate a tool path for a slitting saw
 
-use gcode::{
-    g0, g1, gcode_comment, preamble, trailer, x, xyz, xf,
-};
+use gcode::{g0, g1, gcode_comment, preamble, trailer, x, xf, xyz};
 use std::f64::consts::PI;
 use std::fs::OpenOptions;
 use std::io::{BufWriter, Result, Write};
@@ -10,10 +8,7 @@ use std::path::PathBuf;
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
-#[structopt(
-    name = "slit_gen",
-    about = "Generates tool path for a slitting saw"
-)]
+#[structopt(name = "slit_gen", about = "Generates tool path for a slitting saw")]
 struct Opt {
     /// Depth (along X axis) of the slit we are creating
     #[structopt(long, default_value = "16")]
@@ -80,9 +75,9 @@ fn make_cut_pass(opt: &Opt, file: &mut dyn Write, z: f64, rpm: f64) -> Result<()
 
     gcode_comment(file, &format!("Making pass at z={}", z))?;
     // Rapid to our home
-    g0(file, xyz(0.0, 0.0, z+z_clear))?;
+    g0(file, xyz(0.0, 0.0, z + z_clear))?;
     // Feed in slowly along Z, to give us an opportunity to panic
-    g1(file, xyz(0.0,0.0, z))?;
+    g1(file, xyz(0.0, 0.0, z))?;
     // Feed in along the X axis
     g1(file, xf(opt.depth, feed))?;
     // Feed out along the X axis a little bit at the feed rate
@@ -111,18 +106,15 @@ fn make_cut(opt: &Opt, file: &mut dyn Write, rpm: f64) -> Result<()> {
         assert!(bottom > start);
         let passes = ((bottom - start) / opt.tool_thick).ceil();
         println!("end {} start {} passes {}", bottom, start, passes);
-       
+
         for i in 0..(passes as usize) {
-            let z = start + i as f64 * (bottom-start)/passes;
+            let z = start + i as f64 * (bottom - start) / passes;
             assert!(z < bottom);
             make_cut_pass(opt, file, -z, rpm)?;
         }
     }
 
     Ok(())
-
-
-
 }
 
 fn main() -> Result<()> {
@@ -141,7 +133,10 @@ fn main() -> Result<()> {
     preamble(
         &opt.name,
         opt.tool,
-        &format!("T{} {}mm dia {}mm thick {} tooth slitting saw", opt.tool, opt.tool_dia, opt.tool_thick, opt.tool_teeth),
+        &format!(
+            "T{} {}mm dia {}mm thick {} tooth slitting saw",
+            opt.tool, opt.tool_dia, opt.tool_thick, opt.tool_teeth
+        ),
         rpm,
         opt.coolant,
         &mut file,

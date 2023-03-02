@@ -2,7 +2,7 @@
 ///! This is designed for cutting with engraving or chamfering tools: a mill with a sharp end.
 ///! The included angle (and depth) of the teeth depends on the included angle of the tool.
 use gcode::{
-    g0, g1, gcode_comment, inv_feed_g93, preamble, standard_feed_g94, trailer, xyza, zf, xf, xaf,
+    g0, g1, gcode_comment, inv_feed_g93, preamble, standard_feed_g94, trailer, xaf, xf, xyza, zf,
 };
 use std::f64::consts::PI;
 use std::fs::OpenOptions;
@@ -45,8 +45,8 @@ struct Opt {
     #[structopt(long, default_value = "60")]
     tool_inc_angle: f64,
 
-    /// Knurling tool pitch (in mm per tooth). Typical tools vary from 1.6 (15tpi) to 0.75 (33tpi). 
-    #[structopt(long, default_value="1")]
+    /// Knurling tool pitch (in mm per tooth). Typical tools vary from 1.6 (15tpi) to 0.75 (33tpi).
+    #[structopt(long, default_value = "1")]
     pitch: f64,
 
     /// Max cutting stepdown, per pass, in mm
@@ -84,13 +84,13 @@ fn help_text(opt: &Opt) {
 ///  XYZ and ABC feed rates.
 fn calc_feed_g93(opt: &Opt) -> f64 {
     // How much we adjust the feed to compensate for simultaneous rotary motion
-    let cutting_path_length = opt.len / opt.spiral_angle.to_radians().cos(); 
+    let cutting_path_length = opt.len / opt.spiral_angle.to_radians().cos();
     cutting_path_length / opt.feed
 }
 
 fn cut_tooth(opt: &Opt, file: &mut dyn Write, teeth: usize, a_start: f64) -> Result<()> {
     // Cutting a knurl consists of making a number of passes at different depths until we arrive at the final depth
-    
+
     // How far away we want to keep the tool from the work when not cutting
     let clearance = 4.0;
 
@@ -112,7 +112,10 @@ fn cut_tooth(opt: &Opt, file: &mut dyn Write, teeth: usize, a_start: f64) -> Res
 
     for i in 0..passes {
         let z = stock_top_z - actual_stepdown * (i + 1) as f64;
-        g0(file, xyza(clearance, tool_y, stock_top_z + clearance, a_start))?;
+        g0(
+            file,
+            xyza(clearance, tool_y, stock_top_z + clearance, a_start),
+        )?;
         // Plunge the tool to z depth. Shouldn't be cutting yet, but we're being a bit careful
         g1(file, zf(z, opt.feed))?;
         // Feed in along the x axis until the tool is about to make contact
@@ -126,17 +129,23 @@ fn cut_tooth(opt: &Opt, file: &mut dyn Write, teeth: usize, a_start: f64) -> Res
         // Move out of the work in Z to the clearance height
         g1(file, zf(stock_top_z + clearance, opt.feed))?;
         // And rapid back to where we started
-        g0(file, xyza(clearance, tool_y, stock_top_z + clearance, a_start))?;
+        g0(
+            file,
+            xyza(clearance, tool_y, stock_top_z + clearance, a_start),
+        )?;
     }
 
     Ok(())
-
 }
 
 fn cut_knurls(opt: &Opt, file: &mut dyn Write) -> Result<()> {
     let circumference = PI * opt.dia;
     let teeth = (circumference / opt.pitch).floor() as usize;
-    println!("Requested {} teeth, actually cutting {}", circumference / opt.pitch, teeth);
+    println!(
+        "Requested {} teeth, actually cutting {}",
+        circumference / opt.pitch,
+        teeth
+    );
     let a_step = 360.0 / teeth as f64;
 
     for i in 0..teeth {
@@ -160,7 +169,10 @@ fn main() -> Result<()> {
     preamble(
         &opt.name,
         opt.tool,
-        &format!("T{} {} degree chamfer mill or engraver", opt.tool, opt.tool_inc_angle),
+        &format!(
+            "T{} {} degree chamfer mill or engraver",
+            opt.tool, opt.tool_inc_angle
+        ),
         opt.rpm,
         opt.coolant,
         &mut file,
