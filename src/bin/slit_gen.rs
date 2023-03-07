@@ -1,6 +1,11 @@
-//! Generate a tool path for a slitting saw
-
-use gcode::{g0, g1, gcode_comment, preamble, trailer, x, xf, xyz};
+//! Generate a tool path for a slitting saw.
+//! 
+//! The generated path is a single move along +X, possibly with cuts at multiple heights to make slits wider than the saw. This technique is controversial, but in my experience
+//!  works well in brass, aluminium, and steel as long as the feed isn't too aggressive.
+//! 
+//! The default speeds and feeds here work well on my Tormach 440, HSS saw, and into steel. "By the book" this is too much speed and too little feed, but the Tormach struggles
+//!   with torque at the bottom of its RPM range, and so this approach is needed.
+use gcode::{g0, g1, gcode_comment, preamble, trailer, x, xf, xyz, xyzf};
 use std::f64::consts::PI;
 use std::fs::OpenOptions;
 use std::io::{BufWriter, Result, Write};
@@ -10,17 +15,12 @@ use structopt::StructOpt;
 #[derive(Debug, StructOpt)]
 #[structopt(name = "slit_gen", about = "Generates tool path for a slitting saw")]
 struct Opt {
-    /// Depth (along X axis) of the slit we are creating
-    #[structopt(long, default_value = "16")]
-    len: f64,
-
     /// Tool surface speed (in meters/minute)
-    // Feed and speed defaults for 1/4" carbide in annealed W1
-    #[structopt(long, default_value = "40")]
+    #[structopt(long, default_value = "120")]
     speed: f64,
 
     /// Feed rate per tooth, in mm/tooth
-    #[structopt(long, default_value = "0.012")]
+    #[structopt(long, default_value = "0.001")]
     feed_per_tooth: f64,
 
     /// Tool teeth
@@ -32,7 +32,7 @@ struct Opt {
     name: Option<String>,
 
     /// Tool number for the cut
-    #[structopt(long, default_value = "17")]
+    #[structopt(long, default_value = "18")]
     tool: u32,
 
     /// Tool diameter, in mm
@@ -77,7 +77,7 @@ fn make_cut_pass(opt: &Opt, file: &mut dyn Write, z: f64, rpm: f64) -> Result<()
     // Rapid to our home
     g0(file, xyz(0.0, 0.0, z + z_clear))?;
     // Feed in slowly along Z, to give us an opportunity to panic
-    g1(file, xyz(0.0, 0.0, z))?;
+    g1(file, xyzf(0.0, 0.0, z, feed))?;
     // Feed in along the X axis
     g1(file, xf(opt.depth, feed))?;
     // Feed out along the X axis a little bit at the feed rate
