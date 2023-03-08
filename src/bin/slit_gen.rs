@@ -1,8 +1,8 @@
 //! Generate a tool path for a slitting saw.
-//! 
+//!
 //! The generated path is a single move along +X, possibly with cuts at multiple heights to make slits wider than the saw. This technique is controversial, but in my experience
 //!  works well in brass, aluminium, and steel as long as the feed isn't too aggressive.
-//! 
+//!
 //! The default speeds and feeds here work well on my Tormach 440, HSS saw, and into steel. "By the book" this is too much speed and too little feed, but the Tormach struggles
 //!   with torque at the bottom of its RPM range, and so this approach is needed.
 use gcode::{g0, g1, gcode_comment, preamble, trailer, x, xf, xyz, xyzf};

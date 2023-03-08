@@ -38,11 +38,11 @@ struct Opt {
     name: Option<String>,
 
     /// Tool number for the cut
-    #[structopt(long, default_value = "1")]
+    #[structopt(long, default_value = "17")]
     tool: u32,
 
     /// Tool included angle, in degrees
-    #[structopt(long, default_value = "60")]
+    #[structopt(long, default_value = "40")]
     tool_inc_angle: f64,
 
     /// Knurling tool pitch (in mm per tooth). Typical tools vary from 1.6 (15tpi) to 0.75 (33tpi).
@@ -88,21 +88,19 @@ fn calc_feed_g93(opt: &Opt) -> f64 {
     cutting_path_length / opt.feed
 }
 
-fn cut_tooth(opt: &Opt, file: &mut dyn Write, teeth: usize, a_start: f64) -> Result<()> {
-    // Cutting a knurl consists of making a number of passes at different depths until we arrive at the final depth
-
+// Cut a single pass of a single tooth
+fn cut_tooth(
+    opt: &Opt,
+    file: &mut dyn Write,
+    a_start: f64,
+    stock_top_z: f64,
+    cut_depth: f64,
+) -> Result<()> {
     // How far away we want to keep the tool from the work when not cutting
     let clearance = 4.0;
 
     // We're always cutting along the X axis at y=0
     let tool_y = 0.0;
-    let stock_top_z = opt.dia / 2.0;
-
-    let actual_tooth_width = (PI * opt.dia) / (teeth as f64);
-    let tooth_depth = (actual_tooth_width / 2.0) / (opt.tool_inc_angle.to_radians().tan());
-
-    let passes = (tooth_depth / opt.max_stepdown).ceil() as usize;
-    let actual_stepdown = tooth_depth / passes as f64;
 
     // Calculate the ending angle for the spiral, in degrees. This is how much we turn the A axis
     // while cutting
@@ -110,34 +108,34 @@ fn cut_tooth(opt: &Opt, file: &mut dyn Write, teeth: usize, a_start: f64) -> Res
 
     let cutting_feed = calc_feed_g93(opt);
 
-    for i in 0..passes {
-        let z = stock_top_z - actual_stepdown * (i + 1) as f64;
-        g0(
-            file,
-            xyza(clearance, tool_y, stock_top_z + clearance, a_start),
-        )?;
-        // Plunge the tool to z depth. Shouldn't be cutting yet, but we're being a bit careful
-        g1(file, zf(z, opt.feed))?;
-        // Feed in along the x axis until the tool is about to make contact
-        g1(file, xf(0.1, opt.feed))?;
+    g0(
+        file,
+        xyza(clearance, tool_y, stock_top_z + clearance, a_start),
+    )?;
+    // Plunge the tool to z depth. Shouldn't be cutting yet, but we're being a bit careful
+    g1(file, zf(stock_top_z - cut_depth, opt.feed))?;
+    // Feed in along the x axis until the tool is about to make contact
+    g1(file, xf(0.1, opt.feed))?;
 
-        // Simultaneously move in X and A, cutting the actual tooth
-        inv_feed_g93(file)?;
-        g1(file, xaf(-opt.len, a_end, cutting_feed))?;
-        standard_feed_g94(file)?;
+    // Simultaneously move in X and A, cutting the actual tooth
+    inv_feed_g93(file)?;
+    g1(file, xaf(-opt.len, a_end, cutting_feed))?;
+    standard_feed_g94(file)?;
 
-        // Move out of the work in Z to the clearance height
-        g1(file, zf(stock_top_z + clearance, opt.feed))?;
-        // And rapid back to where we started
-        g0(
-            file,
-            xyza(clearance, tool_y, stock_top_z + clearance, a_start),
-        )?;
-    }
+    // Move out of the work in Z to the clearance height
+    g1(file, zf(stock_top_z + clearance, opt.feed))?;
+    // And rapid back to where we started
+    g0(
+        file,
+        xyza(clearance, tool_y, stock_top_z + clearance, a_start),
+    )?;
 
     Ok(())
 }
 
+/// Cut the teeth. The overall strategy is to cut all teeth at each depth, before moving on to the next depth.
+///  This minimizes the amount of burr that is raised on the edge of the teeth, and seems to give a cleaner
+///  edge when we get to final depth.
 fn cut_knurls(opt: &Opt, file: &mut dyn Write) -> Result<()> {
     let circumference = PI * opt.dia;
     let teeth = (circumference / opt.pitch).floor() as usize;
@@ -146,11 +144,23 @@ fn cut_knurls(opt: &Opt, file: &mut dyn Write) -> Result<()> {
         circumference / opt.pitch,
         teeth
     );
+    // A rotation per tooth
     let a_step = 360.0 / teeth as f64;
 
-    for i in 0..teeth {
-        gcode_comment(file, &format!("Tooth {} of {}", i + 1, teeth))?;
-        cut_tooth(opt, file, teeth, a_step * i as f64)?;
+    let stock_top_z = opt.dia / 2.0;
+    let actual_tooth_width = (PI * opt.dia) / (teeth as f64);
+    let tooth_depth = (actual_tooth_width / 2.0) / (opt.tool_inc_angle.to_radians().tan());
+
+    let passes = (tooth_depth / opt.max_stepdown).ceil() as usize;
+    let actual_stepdown = tooth_depth / passes as f64;
+
+    for pass in 0..passes {
+        gcode_comment(file, &format!("Pass {} of {}", pass, passes))?;
+        let cut_depth = actual_stepdown * (pass + 1) as f64;
+        for tooth in 0..teeth {
+            gcode_comment(file, &format!("Tooth {} of {}", tooth, teeth))?;
+            cut_tooth(opt, file, a_step * tooth as f64, stock_top_z, cut_depth)?;
+        }
     }
 
     Ok(())
