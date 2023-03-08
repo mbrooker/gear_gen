@@ -2,7 +2,7 @@
 ///! This is designed for cutting with engraving or chamfering tools: a mill with a sharp end.
 ///! The included angle (and depth) of the teeth depends on the included angle of the tool.
 use gcode::{
-    g0, g1, gcode_comment, inv_feed_g93, preamble, standard_feed_g94, trailer, xaf, xf, xyza, zf,
+    g0, g1, gcode_comment, inv_feed_g93, preamble, standard_feed_g94, trailer, xaf, xf, xyza, zf, z,
 };
 use std::f64::consts::PI;
 use std::fs::OpenOptions;
@@ -26,7 +26,7 @@ struct Opt {
 
     /// Tool RPM
     // Feed and speed defaults for 1/4" carbide in annealed W1
-    #[structopt(long, default_value = "8000")]
+    #[structopt(long, default_value = "9500")]
     rpm: f64,
 
     /// Feed rate, in mm/min
@@ -97,7 +97,7 @@ fn cut_tooth(
     cut_depth: f64,
 ) -> Result<()> {
     // How far away we want to keep the tool from the work when not cutting
-    let clearance = 4.0;
+    let clearance = 3.0;
 
     // We're always cutting along the X axis at y=0
     let tool_y = 0.0;
@@ -122,8 +122,9 @@ fn cut_tooth(
     g1(file, xaf(-opt.len, a_end, cutting_feed))?;
     standard_feed_g94(file)?;
 
-    // Move out of the work in Z to the clearance height
-    g1(file, zf(stock_top_z + clearance, opt.feed))?;
+    // Move out of the work in Z first at the feed rate a short way, then rapid to clearance height
+    g1(file, zf(stock_top_z - cut_depth + 0.5, opt.feed))?;
+    g0(file, z(stock_top_z + clearance))?;
     // And rapid back to where we started
     g0(
         file,

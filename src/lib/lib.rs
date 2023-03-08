@@ -138,6 +138,16 @@ pub fn xyzf(x: f64, y: f64, z: f64, feed: f64) -> PosAndFeed {
     }
 }
 
+pub fn z(z: f64) -> PosAndFeed {
+    PosAndFeed {
+        x: None,
+        y: None,
+        z: Some(z),
+        a: None,
+        feed: None,
+    }
+}
+
 pub fn zf(z: f64, feed: f64) -> PosAndFeed {
     PosAndFeed {
         x: None,
@@ -187,6 +197,7 @@ fn g_move_linear(file: &mut dyn Write, g: &str, p: PosAndFeed) -> Result<()> {
 }
 
 pub fn g0(file: &mut dyn Write, p: PosAndFeed) -> Result<()> {
+    assert!(p.feed.is_none(), "g0 moves must not include a feed rate");
     g_move_linear(file, "G0", p)
 }
 
