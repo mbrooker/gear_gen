@@ -57,12 +57,18 @@ struct Opt {
     #[structopt(long, default_value = "45")]
     spiral_angle: f64,
 
+    /// Spiral the other way
+    #[structopt(long)]
+    reverse_spiral: bool,
+
     /// Output file for the resulting G code
     #[structopt(short, long, parse(from_os_str))]
     output: PathBuf,
 
     #[structopt(long)]
     coolant: bool,
+
+
 }
 
 fn help_text(opt: &Opt) {
@@ -85,7 +91,8 @@ fn help_text(opt: &Opt) {
 fn calc_feed_g93(opt: &Opt) -> f64 {
     // How much we adjust the feed to compensate for simultaneous rotary motion
     let cutting_path_length = opt.len / opt.spiral_angle.to_radians().cos();
-    cutting_path_length / opt.feed
+    // Feed in units of 1/minute
+    opt.feed / cutting_path_length
 }
 
 // Cut a single pass of a single tooth
@@ -104,7 +111,12 @@ fn cut_tooth(
 
     // Calculate the ending angle for the spiral, in degrees. This is how much we turn the A axis
     // while cutting
-    let a_end = a_start + 360.0 * opt.len * opt.spiral_angle.to_radians().tan() / (PI * opt.dia);
+    let a_move = 360.0 * opt.len * opt.spiral_angle.to_radians().tan() / (PI * opt.dia);
+    let a_end = if opt.reverse_spiral {
+        a_start - a_move
+    } else {
+        a_start + a_move
+    };
 
     let cutting_feed = calc_feed_g93(opt);
 
@@ -122,7 +134,8 @@ fn cut_tooth(
     g1(file, xaf(-opt.len, a_end, cutting_feed))?;
     standard_feed_g94(file)?;
 
-    // Move out of the work in Z first at the feed rate a short way, then rapid to clearance height
+    // Move out of the work in X first, then Z, at the feed rate a short way, then rapid to clearance height
+    g1(file, xf(-(opt.len + 0.5), opt.feed))?;
     g1(file, zf(stock_top_z - cut_depth + 0.5, opt.feed))?;
     g0(file, z(stock_top_z + clearance))?;
     // And rapid back to where we started
@@ -188,6 +201,7 @@ fn main() -> Result<()> {
         opt.coolant,
         &mut file,
     )?;
+
     cut_knurls(&opt, &mut file)?;
     trailer(&mut file)?;
 

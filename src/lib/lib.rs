@@ -138,6 +138,16 @@ pub fn xyzf(x: f64, y: f64, z: f64, feed: f64) -> PosAndFeed {
     }
 }
 
+pub fn xzf(x: f64, z: f64, feed: f64) -> PosAndFeed {
+    PosAndFeed {
+        x: Some(x),
+        y: None,
+        z: Some(z),
+        a: None,
+        feed: Some(feed),
+    }
+}
+
 pub fn z(z: f64) -> PosAndFeed {
     PosAndFeed {
         x: None,
