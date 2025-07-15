@@ -12,12 +12,13 @@ use structopt::StructOpt;
     about = "Generates a kind of guilloche-inspired spiral pattern with varying depth"
 )]
 struct Opt {
-    #[structopt(long, default_value = "25")]
-    /// Outer diameter
-    outer_dia: f64,
+    #[structopt(long, default_value = "19")]
+    /// Outer radius
+    outer_rad: f64,
 
-    #[structopt(long, default_value = "2")]
-    inner_dia: f64,
+    #[structopt(long, default_value = "1")]
+    /// Inner radius
+    inner_rad: f64,
 
     #[structopt(long, default_value = "0.5")]
     /// Width of each turn in the spiral
@@ -68,12 +69,13 @@ struct Opt {
 }
 
 fn generate_spiral(opt: &Opt, file: &mut dyn Write, z_off: f64) -> Result<()> {
-    let turns = (opt.outer_dia / opt.pass_width).floor() as usize;
-    let skip_turns = (opt.inner_dia / opt.pass_width).ceil() as usize;
+    let turns = (opt.outer_rad / opt.pass_width).floor() as usize;
+    let skip_turns = (opt.inner_rad / opt.pass_width).ceil() as usize;
 
     let start_x = skip_turns as f64 * opt.pass_width;
 
     gcode_comment(file, &format!("Pass at offset {}mm", z_off))?;
+    println!("Pass at z offset {}mm", z_off);
     // Rapid the starting position
     g0(file, xyz(start_x, 0., 10.0))?;
     g0(file, xyz(start_x, 0., 1.0 + z_off))?;
@@ -104,14 +106,14 @@ fn generate_spiral(opt: &Opt, file: &mut dyn Write, z_off: f64) -> Result<()> {
 fn generate_spiral_step_down(opt: &Opt, file: &mut dyn Write) -> Result<()> {
     let steps = (opt.max_depth / opt.max_stepdown).ceil() as usize;
     for step in 1..(steps + 1) {
-        let z_off = step as f64 * opt.max_depth / steps as f64;
+        let z_off = opt.max_depth * (1.0 - step as f64 / steps as f64);
         generate_spiral(opt, file, z_off)?;
     }
     Ok(())
 }
 
 fn help_text(opt: &Opt) {
-    let spiral_length = f64::consts::PI * opt.outer_dia.powf(2.0) / (2.0 * opt.pass_width);
+    let spiral_length = f64::consts::PI * opt.outer_rad.powf(2.0) / (2.0 * opt.pass_width);
     let steps = (opt.max_depth / opt.max_stepdown).ceil();
     println!(
         "Before cut:
@@ -120,7 +122,7 @@ fn help_text(opt: &Opt) {
         - Spiral length {}mm,
         - {} steps,
         - Approx run time {} minutes",
-        opt.outer_dia,
+        opt.outer_rad * 2.0,
         spiral_length,
         steps,
         steps * spiral_length / opt.feed,

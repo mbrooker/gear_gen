@@ -183,7 +183,7 @@ pub fn zaf(z: f64, a: f64, feed: f64) -> PosAndFeed {
 fn g_val(file: &mut dyn Write, name: &str, ov: Option<f64>) -> Result<()> {
     if let Some(v) = ov {
         if (v - v.round()).abs() < f64::EPSILON {
-            write!(file, " {}{}.", name, v)
+            write!(file, " {}{}.", name, v.round())
         } else {
             write!(file, " {}{:.4}", name, v)
         }
