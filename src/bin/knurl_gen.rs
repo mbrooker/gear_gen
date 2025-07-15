@@ -2,7 +2,7 @@
 ///! This is designed for cutting with engraving or chamfering tools: a mill with a sharp end.
 ///! The included angle (and depth) of the teeth depends on the included angle of the tool.
 use gcode::{
-    g0, g1, gcode_comment, inv_feed_g93, preamble, standard_feed_g94, trailer, xaf, xf, xyza, zf, z,
+    g0, g1, gcode_comment, inv_feed_g93, preamble, standard_feed_g94, trailer, xaf, xf, xyza, z, zf,
 };
 use std::f64::consts::PI;
 use std::fs::OpenOptions;
@@ -67,8 +67,6 @@ struct Opt {
 
     #[structopt(long)]
     coolant: bool,
-
-
 }
 
 fn help_text(opt: &Opt) {
