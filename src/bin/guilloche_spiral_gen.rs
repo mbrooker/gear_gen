@@ -40,6 +40,10 @@ struct Opt {
     /// Number of 'rays' coming out from the center
     rays: usize,
 
+    #[structopt(long, default_value = "0")]
+    /// Radius 'wobble' in mm
+    radial_wobble: f64,
+
     /// Tool RPM
     #[structopt(long, default_value = "8000")]
     rpm: f64,
@@ -90,11 +94,14 @@ fn generate_spiral(opt: &Opt, file: &mut dyn Write, z_off: f64) -> Result<()> {
         for angle_step in 0..opt.steps_per_turn {
             let circle_progress = angle_step as f64 / opt.steps_per_turn as f64;
             let angle = 2.0 * f64::consts::PI * circle_progress;
-            let radius = (circle_progress + turn as f64) * opt.pass_width;
+            // In range [0, 1], where we are on the z cycle
+            let z_step = (1.0 + (angle * opt.rays as f64).sin()) / 2.0;
+            let z = (opt.max_depth - opt.min_depth) * z_step + opt.min_depth;
+
+            let radius = (circle_progress + turn as f64) * opt.pass_width + z_step * opt.radial_wobble;
             let x = radius * angle.cos();
             let y = radius * angle.sin();
-            let z = (opt.max_depth - opt.min_depth) * (1.0 + (angle * opt.rays as f64).sin()) / 2.0
-                + opt.min_depth;
+
             g1(file, xyzf(x, y, z_off - z, opt.feed))?;
         }
     }
