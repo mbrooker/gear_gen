@@ -238,6 +238,9 @@ pub fn g1(file: &mut dyn Write, p: PosAndFeed) -> Result<()> {
     g_move_linear(file, "G1", &p)
 }
 
+/// Trimmed g1 move. Here, we take a list of point to connect with lines, and emit a set of G1 moves.
+///  Only the segments of moves inside `circle` are emitted
+
 pub struct PosRadiusAndFeed {
     x: Option<f64>,
     y: Option<f64>,
@@ -251,6 +254,15 @@ pub fn xyrf(x: f64, y: f64, r: f64, feed: f64) -> PosRadiusAndFeed {
         y: Some(y),
         r: Some(r),
         feed: Some(feed),
+    }
+}
+
+pub fn xyr(x: f64, y: f64, r: f64) -> PosRadiusAndFeed {
+    PosRadiusAndFeed {
+        x: Some(x),
+        y: Some(y),
+        r: Some(r),
+        feed: None,
     }
 }
 
