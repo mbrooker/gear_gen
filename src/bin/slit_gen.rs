@@ -73,7 +73,7 @@ fn make_cut_pass(opt: &Opt, file: &mut dyn Write, z: f64, rpm: f64) -> Result<()
 
     assert!(z <= 0.0);
 
-    gcode_comment(file, &format!("Making pass at z={}", z))?;
+    gcode_comment(file, &format!("Making pass at z={z}"))?;
     // Rapid to our home
     g0(file, xyz(0.0, 0.0, z + z_clear))?;
     // Feed in slowly along Z, to give us an opportunity to panic
@@ -105,7 +105,7 @@ fn make_cut(opt: &Opt, file: &mut dyn Write, rpm: f64) -> Result<()> {
         let start = opt.tool_thick;
         assert!(bottom > start);
         let passes = ((bottom - start) / opt.tool_thick).ceil();
-        println!("end {} start {} passes {}", bottom, start, passes);
+        println!("end {bottom} start {start} passes {passes}");
 
         for i in 0..(passes as usize) {
             let z = start + i as f64 * (bottom - start) / passes;

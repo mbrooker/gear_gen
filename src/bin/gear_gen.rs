@@ -62,9 +62,9 @@ fn pass_at_depth(opt: &Opt, file: &mut File, depth: f64) -> Result<()> {
     let y_pos = (opt.teeth as f64 + 2.0) * opt.module / 2.0 // Stock radius
         + opt.cutter_dia / 2.0 // Plus cutter radius
         - depth; // Minus depth of cut
-    gcode_comment(file, &format!("Pass at depth {}", depth))?;
+    gcode_comment(file, &format!("Pass at depth {depth}"))?;
     // Rapid to our starting point, to the right of the stock
-    writeln!(file, "G0 X{:.4} Y{}", x_clearance, y_pos)?;
+    writeln!(file, "G0 X{x_clearance:.4} Y{y_pos}")?;
     writeln!(file, "G0 Z0.")?;
 
     // Feed into the stock, cutting as we go
@@ -77,15 +77,15 @@ fn pass_at_depth(opt: &Opt, file: &mut File, depth: f64) -> Result<()> {
     writeln!(file, "G0 Y{}", y_pos + clearance + 10.0)?;
 
     // Go back to where we started, in two moves, first X then Y to make sure we have enough clearance
-    writeln!(file, "G0 X{:.4}", x_clearance)?;
-    writeln!(file, "G0 Y{}", y_pos)?;
+    writeln!(file, "G0 X{x_clearance:.4}")?;
+    writeln!(file, "G0 Y{y_pos}")?;
 
     Ok(())
 }
 
 fn cut_tooth(opt: &Opt, file: &mut File, angle: f64) -> Result<()> {
     // First, turn the rotary axis to the right angle, rapid
-    writeln!(file, "G0 A{:.4}", angle)?;
+    writeln!(file, "G0 A{angle:.4}")?;
 
     // Total depth varies from source to source.
     // Here, I'm using the formula from the Machinery's Handbook, 31st Edition, "Module System Gear Design"

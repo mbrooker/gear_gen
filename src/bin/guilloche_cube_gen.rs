@@ -1,6 +1,6 @@
 use core::f64;
 ///! G-Code generator for a kind of wavy spiral guilloche
-use gcode::{g0, g1, g2, gcode_comment, preamble, trailer, xyf, xyrf, xyz, zf};
+use gcode::{g0, g1, gcode_comment, preamble, trailer, xyf, xyz, zf};
 use std::fs::OpenOptions;
 use std::io::{BufWriter, Result, Write};
 use std::path::PathBuf;

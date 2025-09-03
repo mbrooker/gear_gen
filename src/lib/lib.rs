@@ -1,7 +1,7 @@
 use std::io::{Result, Write};
 
 pub fn gcode_comment(file: &mut dyn Write, s: &str) -> Result<()> {
-    writeln!(file, "({})", s)
+    writeln!(file, "({s})")
 }
 
 pub fn trailer(file: &mut dyn Write) -> Result<()> {
@@ -43,14 +43,14 @@ G21 (Metric)
 
 G30 (Go Home Before Starting)
     ";
-    write!(file, "{}\n\n", preamble_str)?;
+    write!(file, "{preamble_str}\n\n")?;
     // Print the tool mode preamble, choosing the tool,
     // enabling length compensation,
     // and executing the tool change cycle
-    writeln!(file, "T{} G43 H{} M6", tool, tool)?;
+    writeln!(file, "T{tool} G43 H{tool} M6")?;
 
     // Print the Speed preamble, and turn on the spindle
-    writeln!(file, "S{} M3", rpm)?;
+    writeln!(file, "S{rpm} M3")?;
 
     // If chosen, start coolant flowing
     if coolant {
@@ -213,7 +213,7 @@ fn g_val(file: &mut dyn Write, name: &str, ov: Option<f64>) -> Result<()> {
         if (v - v.round()).abs() < f64::EPSILON {
             write!(file, " {}{}.", name, v.round())
         } else {
-            write!(file, " {}{:.4}", name, v)
+            write!(file, " {name}{v:.4}")
         }
     } else {
         Ok(())
@@ -221,7 +221,7 @@ fn g_val(file: &mut dyn Write, name: &str, ov: Option<f64>) -> Result<()> {
 }
 
 fn g_move_linear(file: &mut dyn Write, g: &str, p: &dyn AsGVals) -> Result<()> {
-    write!(file, "{}", g)?;
+    write!(file, "{g}")?;
     p.as_gvals(file)?;
     writeln!(file)?;
     Ok(())

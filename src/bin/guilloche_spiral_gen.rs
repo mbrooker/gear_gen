@@ -78,8 +78,8 @@ fn generate_spiral(opt: &Opt, file: &mut dyn Write, z_off: f64) -> Result<()> {
 
     let start_x = skip_turns as f64 * opt.pass_width;
 
-    gcode_comment(file, &format!("Pass at offset {}mm", z_off))?;
-    println!("Pass at z offset {}mm", z_off);
+    gcode_comment(file, &format!("Pass at offset {z_off}mm"))?;
+    println!("Pass at z offset {z_off}mm");
     // Rapid the starting position
     g0(file, xyz(start_x, 0., 10.0))?;
     g0(file, xyz(start_x, 0., 1.0 + z_off))?;
@@ -90,7 +90,7 @@ fn generate_spiral(opt: &Opt, file: &mut dyn Write, z_off: f64) -> Result<()> {
     )?;
 
     for turn in skip_turns..turns {
-        gcode_comment(file, &format!("Turn: {}", turn))?;
+        gcode_comment(file, &format!("Turn: {turn}"))?;
         for angle_step in 0..opt.steps_per_turn {
             let circle_progress = angle_step as f64 / opt.steps_per_turn as f64;
             let angle = 2.0 * f64::consts::PI * circle_progress;

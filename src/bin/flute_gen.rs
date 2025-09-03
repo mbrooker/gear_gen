@@ -110,7 +110,7 @@ fn pass_at_depth(
     let cutting_feed = calc_machine_feedrate(opt, a_start, a_end, opt.feed);
     let in_out_feed = opt.feed;
 
-    gcode_comment(file, &format!("Pass at depth {}", max_depth))?;
+    gcode_comment(file, &format!("Pass at depth {max_depth}"))?;
     // Rapid to some distance above the start of the work
     g0(file, xyza(x_pos, y_pos, z_start + clearance, a_start))?;
     // Feed in to the starting Z at feed rate (this shouldn't plunge the tool, but we're just being cautious by not making this rapid)

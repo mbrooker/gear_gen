@@ -167,10 +167,10 @@ fn cut_knurls(opt: &Opt, file: &mut dyn Write) -> Result<()> {
     let actual_stepdown = tooth_depth / passes as f64;
 
     for pass in 0..passes {
-        gcode_comment(file, &format!("Pass {} of {}", pass, passes))?;
+        gcode_comment(file, &format!("Pass {pass} of {passes}"))?;
         let cut_depth = actual_stepdown * (pass + 1) as f64;
         for tooth in 0..teeth {
-            gcode_comment(file, &format!("Tooth {} of {}", tooth, teeth))?;
+            gcode_comment(file, &format!("Tooth {tooth} of {teeth}"))?;
             cut_tooth(opt, file, a_step * tooth as f64, stock_top_z, cut_depth)?;
         }
     }

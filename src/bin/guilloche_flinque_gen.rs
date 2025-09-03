@@ -75,7 +75,7 @@ fn generate_flinque(opt: &Opt, file: &mut dyn Write) -> Result<()> {
     g0(file, xyz(start_x, 0., 1.0))?;
 
     for circle in skip_circles..circles {
-        gcode_comment(file, &format!("Circle: {}", circle))?;
+        gcode_comment(file, &format!("Circle: {circle}"))?;
         // Rapid over to the start position for the next circle
         g0(
             file,
