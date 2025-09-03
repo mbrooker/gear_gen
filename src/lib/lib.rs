@@ -1,4 +1,5 @@
 use std::io::{Result, Write};
+mod geometry;
 
 pub fn gcode_comment(file: &mut dyn Write, s: &str) -> Result<()> {
     writeln!(file, "({s})")
