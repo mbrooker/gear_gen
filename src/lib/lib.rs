@@ -60,6 +60,10 @@ G30 (Go Home Before Starting)
     Ok(())
 }
 
+trait AsGVals {
+    fn as_gvals(&self, file: &mut dyn Write) -> Result<()>;
+}
+
 pub struct PosAndFeed {
     x: Option<f64>,
     y: Option<f64>,
@@ -128,6 +132,16 @@ pub fn xyz(x: f64, y: f64, z: f64) -> PosAndFeed {
     }
 }
 
+pub fn xyf(x: f64, y: f64, feed: f64) -> PosAndFeed {
+    PosAndFeed {
+        x: Some(x),
+        y: Some(y),
+        z: None,
+        a: None,
+        feed: Some(feed),
+    }
+}
+
 pub fn xyzf(x: f64, y: f64, z: f64, feed: f64) -> PosAndFeed {
     PosAndFeed {
         x: Some(x),
@@ -178,6 +192,20 @@ pub fn zaf(z: f64, a: f64, feed: f64) -> PosAndFeed {
     }
 }
 
+impl AsGVals for PosAndFeed {
+    fn as_gvals(&self, file: &mut dyn Write) -> Result<()> {
+        if self.x.is_none() && self.y.is_none() && self.z.is_none() {
+            panic!("Refusing to make illegal move");
+        }
+        g_val(file, "X", self.x)?;
+        g_val(file, "Y", self.y)?;
+        g_val(file, "Z", self.z)?;
+        g_val(file, "A", self.a)?;
+        g_val(file, "F", self.feed)?;
+        Ok(())
+    }
+}
+
 /// Emit a gcode parameter value, if `ov` is `Some`.
 /// To make the gcode human-friendly, numbers that round nicely are printed in their minimal form.
 fn g_val(file: &mut dyn Write, name: &str, ov: Option<f64>) -> Result<()> {
@@ -192,28 +220,55 @@ fn g_val(file: &mut dyn Write, name: &str, ov: Option<f64>) -> Result<()> {
     }
 }
 
-fn g_move_linear(file: &mut dyn Write, g: &str, p: PosAndFeed) -> Result<()> {
-    if p.x.is_none() && p.y.is_none() && p.z.is_none() {
-        panic!("Refusing to make illegal {}", g);
-    }
+fn g_move_linear(file: &mut dyn Write, g: &str, p: &dyn AsGVals) -> Result<()> {
     write!(file, "{}", g)?;
-    g_val(file, "X", p.x)?;
-    g_val(file, "Y", p.y)?;
-    g_val(file, "Z", p.z)?;
-    g_val(file, "A", p.a)?;
-    g_val(file, "F", p.feed)?;
+    p.as_gvals(file)?;
     writeln!(file)?;
     Ok(())
 }
 
 pub fn g0(file: &mut dyn Write, p: PosAndFeed) -> Result<()> {
     assert!(p.feed.is_none(), "g0 moves must not include a feed rate");
-    g_move_linear(file, "G0", p)
+    g_move_linear(file, "G0", &p)
 }
 
 pub fn g1(file: &mut dyn Write, p: PosAndFeed) -> Result<()> {
     assert!(p.feed.is_some(), "g1 moves must include a feed rate");
-    g_move_linear(file, "G1", p)
+    g_move_linear(file, "G1", &p)
+}
+
+pub struct PosRadiusAndFeed {
+    x: Option<f64>,
+    y: Option<f64>,
+    r: Option<f64>,
+    feed: Option<f64>,
+}
+
+pub fn xyrf(x: f64, y: f64, r: f64, feed: f64) -> PosRadiusAndFeed {
+    PosRadiusAndFeed {
+        x: Some(x),
+        y: Some(y),
+        r: Some(r),
+        feed: Some(feed),
+    }
+}
+
+impl AsGVals for PosRadiusAndFeed {
+    fn as_gvals(&self, file: &mut dyn Write) -> Result<()> {
+        g_val(file, "X", self.x)?;
+        g_val(file, "Y", self.y)?;
+        g_val(file, "R", self.r)?;
+        g_val(file, "F", self.feed)?;
+        Ok(())
+    }
+}
+
+/// G2 arc move, with radius
+pub fn g2(file: &mut dyn Write, p: PosRadiusAndFeed) -> Result<()> {
+    if p.x.is_none() || p.y.is_none() || p.r.is_none() || p.feed.is_none() {
+        panic!("Refusing to make illegal G2 move");
+    }
+    g_move_linear(file, "G2", &p)
 }
 
 /// Enable inverse feed rate mode (G93)

@@ -98,7 +98,8 @@ fn generate_spiral(opt: &Opt, file: &mut dyn Write, z_off: f64) -> Result<()> {
             let z_step = (1.0 + (angle * opt.rays as f64).sin()) / 2.0;
             let z = (opt.max_depth - opt.min_depth) * z_step + opt.min_depth;
 
-            let radius = (circle_progress + turn as f64) * opt.pass_width + z_step * opt.radial_wobble;
+            let radius =
+                (circle_progress + turn as f64) * opt.pass_width + z_step * opt.radial_wobble;
             let x = radius * angle.cos();
             let y = radius * angle.sin();
 

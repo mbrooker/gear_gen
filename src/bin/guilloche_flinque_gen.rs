@@ -1,6 +1,6 @@
 use core::f64;
 ///! G-Code generator for a kind of wavy spiral guilloche
-use gcode::{g0, g1, gcode_comment, preamble, trailer, xyz, xyzf, zf, z};
+use gcode::{g0, g1, gcode_comment, preamble, trailer, xyz, xyzf, z, zf};
 use std::fs::OpenOptions;
 use std::io::{BufWriter, Result, Write};
 use std::path::PathBuf;
@@ -74,11 +74,17 @@ fn generate_flinque(opt: &Opt, file: &mut dyn Write) -> Result<()> {
     g0(file, xyz(start_x, 0., 10.0))?;
     g0(file, xyz(start_x, 0., 1.0))?;
 
-
     for circle in skip_circles..circles {
         gcode_comment(file, &format!("Circle: {}", circle))?;
         // Rapid over to the start position for the next circle
-        g0(file, xyz(circle as f64 * opt.step_over + opt.radial_wobble / 2.0, 0., 1.0))?;
+        g0(
+            file,
+            xyz(
+                circle as f64 * opt.step_over + opt.radial_wobble / 2.0,
+                0.,
+                1.0,
+            ),
+        )?;
         // Then slowly plunge to depth
         g1(file, zf(-opt.depth, opt.feed))?;
         // Loop around, plus a little overlap
@@ -100,8 +106,6 @@ fn generate_flinque(opt: &Opt, file: &mut dyn Write) -> Result<()> {
     g0(file, z(10.0))?;
     Ok(())
 }
-
-
 
 fn help_text(opt: &Opt) {
     let circles = (opt.outer_rad / opt.step_over).floor() as usize;
