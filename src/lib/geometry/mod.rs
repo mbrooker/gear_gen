@@ -1,6 +1,6 @@
 use nalgebra::geometry::Point2;
 
-use crate::PosAndFeed;
+use crate::{xy, PosAndFeed, PosRadiusAndFeed};
 
 #[derive(Debug, PartialEq)]
 pub struct LineSegment {
@@ -9,7 +9,7 @@ pub struct LineSegment {
 }
 
 impl LineSegment {
-    pub fn new(start: PosAndFeed, end: PosAndFeed) -> Self {
+    pub fn new(start: &PosAndFeed, end: &PosAndFeed) -> Self {
         assert!(start.feed.is_none() && end.feed.is_none());
         assert!(start.z.is_none() && end.feed.is_none());
         LineSegment {
@@ -19,28 +19,44 @@ impl LineSegment {
     }
 }
 
+impl From<Point2<f64>> for PosAndFeed {
+    fn from(p: Point2<f64>) -> Self {
+        xy(p.x, p.y)
+    }
+}
+
 #[derive(Debug)]
 pub struct Circle {
     pub center: Point2<f64>,
     pub radius: f64,
 }
 
+impl Circle {
+    pub fn new(p: &PosRadiusAndFeed) -> Self {
+        assert!(p.feed.is_none());
+        Circle {
+            center: Point2::new(p.x.unwrap(), p.y.unwrap()),
+            radius: p.r.unwrap(),
+        }
+    }
+}
+
 #[derive(Debug)]
-enum TrimResult {
+pub enum TrimResult {
     Trimmed(LineSegment),
     Unchanged(LineSegment),
     None,
 }
 
 impl TrimResult {
-    fn is_none(&self) -> bool {
+    pub fn is_none(&self) -> bool {
         match self {
             TrimResult::None => true,
             _ => false,
         }
     }
 
-    fn unwrap(self) -> LineSegment {
+    pub fn unwrap(self) -> LineSegment {
         match self {
             TrimResult::None => panic!("Unwrap none"),
             TrimResult::Trimmed(t) => t,
@@ -48,14 +64,14 @@ impl TrimResult {
         }
     }
 
-    fn is_unchanged(&self) -> bool {
+    pub fn is_unchanged(&self) -> bool {
         match self {
             TrimResult::Unchanged(_) => true,
             _ => false,
         }
     }
 
-    fn is_trimmed(&self) -> bool {
+    pub fn is_trimmed(&self) -> bool {
         match self {
             TrimResult::Trimmed(_) => true,
             _ => false,
@@ -65,7 +81,7 @@ impl TrimResult {
 
 /// Given the LineSegment `line`, return zero or one lines corresponding to the portion of the segment that is inside the circle `c`
 /// If `line` is tangent to `circle`, return None instead of a zero-length line
-pub fn trim(line: LineSegment, circle: Circle) -> TrimResult {
+pub fn trim(line: LineSegment, circle: &Circle) -> TrimResult {
     // Vector from circle center to line start
     let to_start = line.start - circle.center;
 
@@ -91,7 +107,6 @@ pub fn trim(line: LineSegment, circle: Circle) -> TrimResult {
 
     let discriminant = b * b - 4.0 * a * c;
 
-    println!("Got discriminant {discriminant}: {a} {b} {c}");
     // No intersection, or tangent
     if discriminant <= 0.0 {
         return TrimResult::None;
@@ -108,8 +123,6 @@ pub fn trim(line: LineSegment, circle: Circle) -> TrimResult {
     // Clamp intersection parameters to [0, 1] (segment bounds)
     let t_min = t1.max(0.0).min(1.0);
     let t_max = t2.max(0.0).min(1.0);
-
-    println!("{t1} {t2} {t_min} {t_max}");
 
     // Calculate intersection points
     let p1 = line.start + t_min * dir;
@@ -146,7 +159,7 @@ mod tests {
             end: Point2::new(3.0, 0.0),
         };
 
-        let result = trim(line, circle);
+        let result = trim(line, &circle);
         println!("Got outside result {:?}", result);
         assert!(result.is_none());
     }
@@ -162,7 +175,7 @@ mod tests {
             end: Point2::new(2.0, 2.0),
         };
 
-        let result = trim(line, circle);
+        let result = trim(line, &circle);
         println!("Got outside result {:?}", result);
         assert!(result.is_none());
     }
@@ -178,7 +191,7 @@ mod tests {
             end: Point2::new(0.5, 0.0),
         };
 
-        let enum_result = trim(line, circle);
+        let enum_result = trim(line, &circle);
         assert!(enum_result.is_unchanged());
         let result = enum_result.unwrap();
         assert!(points_equal(result.start, Point2::new(-0.5, 0.0)));
@@ -196,7 +209,7 @@ mod tests {
             end: Point2::new(2.0, 0.0),
         };
 
-        let enum_result = trim(line, circle);
+        let enum_result = trim(line, &circle);
         assert!(enum_result.is_trimmed());
         let result = enum_result.unwrap();
         assert!(points_equal(result.start, Point2::new(-1.0, 0.0)));
@@ -214,7 +227,7 @@ mod tests {
             end: Point2::new(2.0, 0.0),   // Outside
         };
 
-        let enum_result = trim(line, circle);
+        let enum_result = trim(line, &circle);
         assert!(enum_result.is_trimmed());
         let result = enum_result.unwrap();
         assert!(points_equal(result.start, Point2::new(0.5, 0.0)));
@@ -232,7 +245,7 @@ mod tests {
             end: Point2::new(0.5, 0.0),    // Inside
         };
 
-        let enum_result = trim(line, circle);
+        let enum_result = trim(line, &circle);
         assert!(enum_result.is_trimmed());
         let result = enum_result.unwrap();
         assert!(points_equal(result.start, Point2::new(-1.0, 0.0)));
@@ -250,7 +263,7 @@ mod tests {
             end: Point2::new(1.0, 1.0),
         };
 
-        assert!(trim(line, circle).is_none());
+        assert!(trim(line, &circle).is_none());
     }
 
     #[test]
@@ -264,7 +277,7 @@ mod tests {
             end: Point2::new(0.5, 0.0),
         };
 
-        let enum_result = trim(line, circle);
+        let enum_result = trim(line, &circle);
         assert!(enum_result.is_unchanged());
         let result = enum_result.unwrap();
         assert!(points_equal(result.start, Point2::new(0.5, 0.0)));
@@ -282,7 +295,7 @@ mod tests {
             end: Point2::new(2.0, 0.0),
         };
 
-        let enum_result = trim(line, circle);
+        let enum_result = trim(line, &circle);
         assert!(enum_result.is_none());
     }
 
@@ -297,7 +310,7 @@ mod tests {
             end: Point2::new(2.0, 2.0),
         };
 
-        let result = trim(line, circle).unwrap();
+        let result = trim(line, &circle).unwrap();
         // For a diagonal line y=x through a unit circle, intersection points are at (±√2/2, ±√2/2)
         let expected_coord = 1.0 / 2.0_f64.sqrt();
         assert!(points_equal(
@@ -321,7 +334,7 @@ mod tests {
             end: Point2::new(1.0, 2.0),
         };
 
-        let result = trim(line, circle);
+        let result = trim(line, &circle);
         assert!(result.is_none());
     }
 }

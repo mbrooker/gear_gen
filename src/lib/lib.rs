@@ -1,4 +1,6 @@
 use std::io::{Result, Write};
+
+use crate::geometry::{trim, Circle, LineSegment};
 mod geometry;
 
 pub fn gcode_comment(file: &mut dyn Write, s: &str) -> Result<()> {
@@ -65,6 +67,7 @@ trait AsGVals {
     fn as_gvals(&self, file: &mut dyn Write) -> Result<()>;
 }
 
+#[derive(Clone, Debug)]
 pub struct PosAndFeed {
     x: Option<f64>,
     y: Option<f64>,
@@ -240,6 +243,50 @@ pub fn g1(file: &mut dyn Write, p: PosAndFeed) -> Result<()> {
 
 /// Trimmed g1 move. Here, we take a list of point to connect with lines, and emit a set of G1 moves.
 ///  Only the segments of moves inside `circle` are emitted
+pub fn trimmed_g1_path(
+    file: &mut dyn Write,
+    z_safe: f64,
+    z_cut: f64,
+    feed: f64,
+    path: &[PosAndFeed],
+    circle: &PosRadiusAndFeed,
+) -> Result<()> {
+    let mut cutter_down = false;
+    // Make sure the cutter is up
+    g0(file, z(z_safe))?;
+
+    let trimmer = &Circle::new(circle);
+    println!("Cutting {} segs", path.len() - 1);
+    for i in 0..(path.len() - 1) {
+        let seg = trim(LineSegment::new(&path[i], &path[i + 1]), trimmer);
+        let raise_at_end = seg.is_none() || seg.is_trimmed();
+        if !seg.is_none() {
+            let points = seg.unwrap();
+            let p1: PosAndFeed = points.start.into();
+            let p2: PosAndFeed = points.end.into();
+            println!("Cutting from {:?} to {:?}.", p1, p2);
+            if !cutter_down {
+                // Rapid to start position
+                g0(file, p1)?;
+                // Lower the cutter
+                g1(file, zf(z_cut, feed))?;
+                cutter_down = true;
+            }
+            // Now cut
+            g1(file, xyf(p2.x.unwrap(), p2.y.unwrap(), feed))?;
+        }
+        if raise_at_end {
+            g0(file, z(z_safe))?;
+            cutter_down = false;
+        }
+    }
+
+    if cutter_down {
+        g0(file, z(z_safe))?;
+    }
+
+    Ok(())
+}
 
 pub struct PosRadiusAndFeed {
     x: Option<f64>,

@@ -1,6 +1,6 @@
 use core::f64;
 ///! G-Code generator for a kind of wavy spiral guilloche
-use gcode::{g0, g1, gcode_comment, preamble, trailer, xyf, xyz, zf};
+use gcode::{g0, g1, gcode_comment, preamble, trailer, trimmed_g1_path, xy, xyr, PosRadiusAndFeed};
 use std::fs::OpenOptions;
 use std::io::{BufWriter, Result, Write};
 use std::path::PathBuf;
@@ -54,7 +54,13 @@ struct Opt {
     coolant: bool,
 }
 
-fn generate_cube(opt: &Opt, file: &mut dyn Write, cx: f64, cy: f64) -> Result<()> {
+fn generate_cube(
+    opt: &Opt,
+    file: &mut dyn Write,
+    cx: f64,
+    cy: f64,
+    trimmer: &PosRadiusAndFeed,
+) -> Result<()> {
     let safe_z = 1.0;
     let steps = (opt.cube_size / opt.step_over).floor() as usize + 1;
     let y_adv = opt.cube_size * DEG_30.sin();
@@ -63,11 +69,18 @@ fn generate_cube(opt: &Opt, file: &mut dyn Write, cx: f64, cy: f64) -> Result<()
     for i in 0..steps {
         let base_y = cy - i as f64 * opt.step_over;
 
-        g0(file, xyz(cx - x_adv, base_y + y_adv, safe_z))?;
-        g1(file, zf(-opt.depth, opt.feed))?;
-        g1(file, xyf(cx, base_y, opt.feed))?;
-        g1(file, xyf(cx + x_adv, base_y + y_adv, opt.feed))?;
-        g1(file, zf(safe_z, opt.feed))?;
+        trimmed_g1_path(
+            file,
+            safe_z,
+            -opt.depth,
+            opt.feed,
+            &[
+                xy(cx - x_adv, base_y + y_adv),
+                xy(cx, base_y),
+                xy(cx + x_adv, base_y + y_adv),
+            ],
+            trimmer,
+        )?;
     }
 
     Ok(())
@@ -84,7 +97,7 @@ fn generate_cubes(opt: &Opt, file: &mut dyn Write) -> Result<()> {
         for x in 0..nx {
             let cx = x as f64 * width + (y % 2) as f64 * width / 2.0;
 
-            generate_cube(opt, file, cx, cy)?;
+            generate_cube(opt, file, cx, cy, &xyr(opt.outer_rad, 0.0, opt.outer_rad))?;
         }
     }
     Ok(())
