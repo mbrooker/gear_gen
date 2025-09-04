@@ -1,7 +1,8 @@
+//! G-Code generator for a kind of wavy spiral guilloche
+//! 
 use core::f64;
-///! G-Code generator for a kind of wavy spiral guilloche
 use gcode::{
-    g0, g1, g2_circle, gcode_comment, preamble, trailer, trimmed_g1_path, xy, xyr, xyzf, xyzrf,
+    g2_circle, gcode_comment, preamble, trailer, trimmed_g1_path, xy, xyr, xyzrf,
     PosRadiusAndFeed,
 };
 use std::fs::OpenOptions;

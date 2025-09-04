@@ -1,5 +1,5 @@
+//! G-Code generator for a kind of wavy spiral guilloche
 use core::f64;
-///! G-Code generator for a kind of wavy spiral guilloche
 use gcode::{g0, g1, gcode_comment, preamble, trailer, xyz, xyzf, zf};
 use std::fs::OpenOptions;
 use std::io::{BufWriter, Result, Write};

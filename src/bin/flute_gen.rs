@@ -1,8 +1,8 @@
-///! G-Code generator for cutting fluted mill tools
+//! G-Code generator for cutting fluted mill tools
 
-///! For an example of where I use this, see http://www.helicron.net/workshop/gearcutting/gear_cutter/
-///! We don't do the actual tooth cutting here (yet), that still needs to be done on a lathe. This just turns the round
-///! hobber into a tool with sharp teeth and back relief behind the teeth.
+//! For an example of where I use this, see http://www.helicron.net/workshop/gearcutting/gear_cutter/
+//! We don't do the actual tooth cutting here (yet), that still needs to be done on a lathe. This just turns the round
+//! hobber into a tool with sharp teeth and back relief behind the teeth.
 use gcode::{
     g0, g1, gcode_comment, inv_feed_g93, preamble, standard_feed_g94, trailer, xyza, zaf, zf,
 };

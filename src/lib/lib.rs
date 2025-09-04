@@ -267,7 +267,7 @@ pub fn trimmed_g1_path(
             let points = seg.unwrap();
             let p1: PosAndFeed = points.start.into();
             let p2: PosAndFeed = points.end.into();
-            println!("Cutting from {:?} to {:?}.", p1, p2);
+            println!("Cutting from {p1:?} to {p2:?}.");
             if !cutter_down {
                 // Rapid to start position
                 g0(file, p1)?;

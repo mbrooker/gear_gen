@@ -50,10 +50,7 @@ pub enum TrimResult {
 
 impl TrimResult {
     pub fn is_none(&self) -> bool {
-        match self {
-            TrimResult::None => true,
-            _ => false,
-        }
+        matches!(self, TrimResult::None)
     }
 
     pub fn unwrap(self) -> LineSegment {
@@ -64,18 +61,8 @@ impl TrimResult {
         }
     }
 
-    pub fn is_unchanged(&self) -> bool {
-        match self {
-            TrimResult::Unchanged(_) => true,
-            _ => false,
-        }
-    }
-
     pub fn is_trimmed(&self) -> bool {
-        match self {
-            TrimResult::Trimmed(_) => true,
-            _ => false,
-        }
+        matches!(self, TrimResult::Trimmed(_))
     }
 }
 
@@ -121,8 +108,8 @@ pub fn trim(line: LineSegment, circle: &Circle) -> TrimResult {
     }
 
     // Clamp intersection parameters to [0, 1] (segment bounds)
-    let t_min = t1.max(0.0).min(1.0);
-    let t_max = t2.max(0.0).min(1.0);
+    let t_min = t1.clamp(0.0, 1.0);
+    let t_max = t2.clamp(0.0, 1.0);
 
     // Calculate intersection points
     let p1 = line.start + t_min * dir;
@@ -160,7 +147,7 @@ mod tests {
         };
 
         let result = trim(line, &circle);
-        println!("Got outside result {:?}", result);
+        println!("Got outside result {result:?}");
         assert!(result.is_none());
     }
 
@@ -176,7 +163,7 @@ mod tests {
         };
 
         let result = trim(line, &circle);
-        println!("Got outside result {:?}", result);
+        println!("Got outside result {result:?}");
         assert!(result.is_none());
     }
 

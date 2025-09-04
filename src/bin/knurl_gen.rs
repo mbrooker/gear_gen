@@ -1,6 +1,6 @@
-///! G-Code generator for cutting knurling tools on a rotational axis
-///! This is designed for cutting with engraving or chamfering tools: a mill with a sharp end.
-///! The included angle (and depth) of the teeth depends on the included angle of the tool.
+//! G-Code generator for cutting knurling tools on a rotational axis
+//! This is designed for cutting with engraving or chamfering tools: a mill with a sharp end.
+//! The included angle (and depth) of the teeth depends on the included angle of the tool.
 use gcode::{
     g0, g1, gcode_comment, inv_feed_g93, preamble, standard_feed_g94, trailer, xaf, xf, xyza, z, zf,
 };
