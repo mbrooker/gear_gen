@@ -233,6 +233,9 @@ fn g_move_linear(file: &mut dyn Write, g: &str, p: &dyn AsGVals) -> Result<()> {
 
 pub fn g0(file: &mut dyn Write, p: PosAndFeed) -> Result<()> {
     assert!(p.feed.is_none(), "g0 moves must not include a feed rate");
+    if let Some(z) = p.z {
+        assert!(z > 0.0, "Rapid move at negative z");
+    }
     g_move_linear(file, "G0", &p)
 }
 
@@ -275,7 +278,7 @@ pub fn trimmed_g1_path(
             // Now cut
             g1(file, xyf(p2.x.unwrap(), p2.y.unwrap(), feed))?;
         }
-        if raise_at_end {
+        if raise_at_end && cutter_down {
             g0(file, z(z_safe))?;
             cutter_down = false;
         }
@@ -293,6 +296,7 @@ pub struct PosRadiusAndFeed {
     y: Option<f64>,
     r: Option<f64>,
     feed: Option<f64>,
+    z: Option<f64>,
 }
 
 pub fn xyrf(x: f64, y: f64, r: f64, feed: f64) -> PosRadiusAndFeed {
@@ -301,6 +305,7 @@ pub fn xyrf(x: f64, y: f64, r: f64, feed: f64) -> PosRadiusAndFeed {
         y: Some(y),
         r: Some(r),
         feed: Some(feed),
+        z: None,
     }
 }
 
@@ -310,6 +315,17 @@ pub fn xyr(x: f64, y: f64, r: f64) -> PosRadiusAndFeed {
         y: Some(y),
         r: Some(r),
         feed: None,
+        z: None,
+    }
+}
+
+pub fn xyzrf(x: f64, y: f64, z: f64, r: f64, feed: f64) -> PosRadiusAndFeed {
+    PosRadiusAndFeed {
+        x: Some(x),
+        y: Some(y),
+        r: Some(r),
+        feed: Some(feed),
+        z: Some(z),
     }
 }
 
@@ -318,6 +334,36 @@ impl AsGVals for PosRadiusAndFeed {
         g_val(file, "X", self.x)?;
         g_val(file, "Y", self.y)?;
         g_val(file, "R", self.r)?;
+        g_val(file, "F", self.feed)?;
+        g_val(file, "Z", self.z)?;
+        Ok(())
+    }
+}
+
+pub struct PosXYIJ {
+    x: Option<f64>,
+    y: Option<f64>,
+    i: Option<f64>,
+    j: Option<f64>,
+    feed: Option<f64>,
+}
+
+pub fn xyijf(x: f64, y: f64, i: f64, j: f64, feed: f64) -> PosXYIJ {
+    PosXYIJ {
+        x: Some(x),
+        y: Some(y),
+        i: Some(i),
+        j: Some(j),
+        feed: Some(feed),
+    }
+}
+
+impl AsGVals for PosXYIJ {
+    fn as_gvals(&self, file: &mut dyn Write) -> Result<()> {
+        g_val(file, "X", self.x)?;
+        g_val(file, "Y", self.y)?;
+        g_val(file, "I", self.i)?;
+        g_val(file, "J", self.j)?;
         g_val(file, "F", self.feed)?;
         Ok(())
     }
@@ -329,6 +375,19 @@ pub fn g2(file: &mut dyn Write, p: PosRadiusAndFeed) -> Result<()> {
         panic!("Refusing to make illegal G2 move");
     }
     g_move_linear(file, "G2", &p)
+}
+
+/// Full circle move
+pub fn g2_circle(file: &mut dyn Write, center: PosRadiusAndFeed, safe_z: f64) -> Result<()> {
+    let x0 = center.x.unwrap() + center.r.unwrap();
+    let x1 = center.x.unwrap() - center.r.unwrap();
+    let y = center.y.unwrap();
+    let feed = center.feed.unwrap();
+    g0(file, xyz(x0, y, safe_z))?;
+    g1(file, xyzf(x0, y, center.z.unwrap(), feed))?;
+    g_move_linear(file, "G2", &xyijf(x0, y, x1, y, feed))?;
+    g1(file, zf(safe_z, feed))?;
+    Ok(())
 }
 
 /// Enable inverse feed rate mode (G93)

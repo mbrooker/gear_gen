@@ -1,6 +1,9 @@
 use core::f64;
 ///! G-Code generator for a kind of wavy spiral guilloche
-use gcode::{g0, g1, gcode_comment, preamble, trailer, trimmed_g1_path, xy, xyr, PosRadiusAndFeed};
+use gcode::{
+    g0, g1, g2_circle, gcode_comment, preamble, trailer, trimmed_g1_path, xy, xyr, xyzf, xyzrf,
+    PosRadiusAndFeed,
+};
 use std::fs::OpenOptions;
 use std::io::{BufWriter, Result, Write};
 use std::path::PathBuf;
@@ -90,14 +93,19 @@ fn generate_cubes(opt: &Opt, file: &mut dyn Write) -> Result<()> {
     let width = 2.0 * DEG_30.cos() * opt.cube_size;
     let height = opt.cube_size * (1.0 + DEG_30.sin());
     let nx = 2 * (opt.outer_rad / width).ceil() as usize;
-    let ny = (opt.outer_rad / opt.cube_size) as usize;
+    let ny = 2 * (opt.outer_rad / opt.cube_size) as usize;
+    g2_circle(
+        file,
+        xyzrf(0.0, 0.0, -opt.depth, opt.outer_rad, opt.feed),
+        1.0,
+    )?;
     for y in 0..ny {
-        let cy = y as f64 * height;
+        let cy = y as f64 * height - opt.outer_rad;
         gcode_comment(file, &format!("Row {y} at {cy}"))?;
         for x in 0..nx {
-            let cx = x as f64 * width + (y % 2) as f64 * width / 2.0;
+            let cx = x as f64 * width + (y % 2) as f64 * width / 2.0 - opt.outer_rad;
 
-            generate_cube(opt, file, cx, cy, &xyr(opt.outer_rad, 0.0, opt.outer_rad))?;
+            generate_cube(opt, file, cx, cy, &xyr(0.0, 0.0, opt.outer_rad * 0.95))?;
         }
     }
     Ok(())
