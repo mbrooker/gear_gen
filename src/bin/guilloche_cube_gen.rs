@@ -26,11 +26,11 @@ struct Opt {
     /// Cut depth
     depth: f64,
 
-    #[structopt(long, default_value = "0.8")]
+    #[structopt(long, default_value = "0.6")]
     /// Step over for each line
     step_over: f64,
 
-    #[structopt(long, default_value = "4.0")]
+    #[structopt(long, default_value = "3.0")]
     /// Size of each cube
     cube_size: f64,
 
@@ -113,18 +113,13 @@ fn generate_cubes(opt: &Opt, file: &mut dyn Write) -> Result<()> {
 }
 
 fn help_text(opt: &Opt) {
-    let circles = (opt.outer_rad / opt.step_over).floor() as usize;
-    let total_distance = circles as f64 * f64::consts::PI * opt.outer_rad;
+
 
     println!(
         "Before cut:
         - Create stock with diameter at least {}mm
-        - Set home to center of stock, at the top,
-        - Travel distance {}mm,
-        - Approx run time {} minutes",
-        opt.outer_rad * 2.0,
-        total_distance,
-        total_distance / opt.feed,
+        - Set home to center of stock, at the top",
+        opt.outer_rad * 2.0
     )
 }
 

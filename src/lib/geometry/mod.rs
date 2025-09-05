@@ -64,6 +64,11 @@ impl TrimResult {
     pub fn is_trimmed(&self) -> bool {
         matches!(self, TrimResult::Trimmed(_))
     }
+
+    #[allow(unused)]
+    pub fn is_unchanged(&self) -> bool {
+        matches!(self, TrimResult::Unchanged(_))
+    }
 }
 
 /// Given the LineSegment `line`, return zero or one lines corresponding to the portion of the segment that is inside the circle `c`

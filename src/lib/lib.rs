@@ -259,7 +259,6 @@ pub fn trimmed_g1_path(
     g0(file, z(z_safe))?;
 
     let trimmer = &Circle::new(circle);
-    println!("Cutting {} segs", path.len() - 1);
     for i in 0..(path.len() - 1) {
         let seg = trim(LineSegment::new(&path[i], &path[i + 1]), trimmer);
         let raise_at_end = seg.is_none() || seg.is_trimmed();
@@ -267,7 +266,6 @@ pub fn trimmed_g1_path(
             let points = seg.unwrap();
             let p1: PosAndFeed = points.start.into();
             let p2: PosAndFeed = points.end.into();
-            println!("Cutting from {p1:?} to {p2:?}.");
             if !cutter_down {
                 // Rapid to start position
                 g0(file, p1)?;
@@ -279,13 +277,13 @@ pub fn trimmed_g1_path(
             g1(file, xyf(p2.x.unwrap(), p2.y.unwrap(), feed))?;
         }
         if raise_at_end && cutter_down {
-            g0(file, z(z_safe))?;
+            g1(file, zf(z_safe, feed))?;
             cutter_down = false;
         }
     }
 
     if cutter_down {
-        g0(file, z(z_safe))?;
+        g1(file, zf(z_safe, feed))?;
     }
 
     Ok(())
