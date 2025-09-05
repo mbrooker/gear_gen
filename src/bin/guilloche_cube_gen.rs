@@ -1,8 +1,8 @@
 //! G-Code generator for a kind of wavy spiral guilloche
-//! 
+//!
 use core::f64;
 use gcode::{
-    g2_circle, gcode_comment, preamble, trailer, trimmed_g1_path, xy, xyr, xyzrf,
+    g2_circle, gcode_comment, patterns, preamble, trailer, trimmed_g1_path, xy, xyf, xyr, xyzrf,
     PosRadiusAndFeed,
 };
 use std::fs::OpenOptions;
@@ -106,15 +106,39 @@ fn generate_cubes(opt: &Opt, file: &mut dyn Write) -> Result<()> {
         for x in 0..nx {
             let cx = x as f64 * width + (y % 2) as f64 * width / 2.0 - opt.outer_rad;
 
-            generate_cube(opt, file, cx, cy, &xyr(0.0, 0.0, opt.outer_rad * 0.95))?;
+            generate_cube(opt, file, cx, cy, &xyr(0.0, 0.0, opt.outer_rad * 0.8))?;
         }
     }
     Ok(())
 }
 
+fn tick_marks(opt: &Opt, file: &mut dyn Write) -> Result<()> {
+    let outer_rad = opt.outer_rad;
+    let center = xyf(0.0, 0.0, opt.feed);
+
+    patterns::radial_tick_marks(
+        file,
+        opt.outer_rad * 0.9,
+        outer_rad,
+        60,
+        &center,
+        -opt.depth,
+        &[5],
+    )?;
+
+    patterns::radial_tick_segments(
+        file,
+        opt.outer_rad * 0.85,
+        outer_rad,
+        12,
+        &center,
+        -opt.depth,
+        f64::consts::TAU / 180.0,
+    )?;
+    Ok(())
+}
+
 fn help_text(opt: &Opt) {
-
-
     println!(
         "Before cut:
         - Create stock with diameter at least {}mm
@@ -143,6 +167,7 @@ fn main() -> Result<()> {
         &mut file,
     )?;
     generate_cubes(&opt, &mut file)?;
+    tick_marks(&opt, &mut file)?;
     trailer(&mut file)?;
 
     file.flush()

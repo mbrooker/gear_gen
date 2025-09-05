@@ -2,6 +2,7 @@ use std::io::{Result, Write};
 
 use crate::geometry::{trim, Circle, LineSegment};
 mod geometry;
+pub mod patterns;
 
 pub fn gcode_comment(file: &mut dyn Write, s: &str) -> Result<()> {
     writeln!(file, "({s})")
@@ -367,12 +368,24 @@ impl AsGVals for PosXYIJ {
     }
 }
 
-/// G2 arc move, with radius
-pub fn g2(file: &mut dyn Write, p: PosRadiusAndFeed) -> Result<()> {
-    if p.x.is_none() || p.y.is_none() || p.r.is_none() || p.feed.is_none() {
+/// G2 clockwise arc move
+/// See https://www.cnccookbook.com/cnc-g-code-arc-circle-g02-g03/ for a good description of what the params mean
+/// X, Y is endpoint, I, J is offset from start point to true arc center
+pub fn g2(file: &mut dyn Write, p: PosXYIJ) -> Result<()> {
+    if p.x.is_none() || p.y.is_none() || p.i.is_none() || p.j.is_none() || p.feed.is_none() {
         panic!("Refusing to make illegal G2 move");
     }
     g_move_linear(file, "G2", &p)
+}
+
+/// G3 counter-clockwise arc move
+/// See https://www.cnccookbook.com/cnc-g-code-arc-circle-g02-g03/ for a good description of what the params mean
+/// X, Y is endpoint, I, J is offset from start point to true arc center
+pub fn g3(file: &mut dyn Write, p: PosXYIJ) -> Result<()> {
+    if p.x.is_none() || p.y.is_none() || p.i.is_none() || p.j.is_none() || p.feed.is_none() {
+        panic!("Refusing to make illegal G2 move");
+    }
+    g_move_linear(file, "G3", &p)
 }
 
 /// Full circle move
@@ -383,7 +396,7 @@ pub fn g2_circle(file: &mut dyn Write, center: PosRadiusAndFeed, safe_z: f64) ->
     let feed = center.feed.unwrap();
     g0(file, xyz(x0, y, safe_z))?;
     g1(file, xyzf(x0, y, center.z.unwrap(), feed))?;
-    g_move_linear(file, "G2", &xyijf(x0, y, x1, y, feed))?;
+    g2(file, xyijf(x0, y, x1, y, feed))?;
     g1(file, zf(safe_z, feed))?;
     Ok(())
 }
