@@ -90,6 +90,11 @@ pub fn radial_tick_segments(
         // Inner arc segment
         g3(file, xyijf(sx1, sy1, -ex2, -ey2, feed))?;
 
+        // Now hatch out the inside with two diagonal passes, like a little cross inside the segment
+        g1(file, xyf(sx2, sy2, feed))?;
+        g1(file, xyf(ex1, ey1, feed))?;
+        g1(file, xyf(ex2, ey2, feed))?;
+
         // Raise the cutter, ready for the next rapid
         g1(file, zf(z_safe, center.feed.unwrap()))?;
     }

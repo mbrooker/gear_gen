@@ -18,19 +18,19 @@ const DEG_30: f64 = f64::consts::PI / 6.0;
     about = "Generates a kind of guilloche-inspired pattern of QBert cubes"
 )]
 struct Opt {
-    #[structopt(long, default_value = "19")]
+    #[structopt(long, default_value = "16")]
     /// Outer radius
     outer_rad: f64,
 
-    #[structopt(long, default_value = "0.2")]
+    #[structopt(long, default_value = "0.1")]
     /// Cut depth
     depth: f64,
 
-    #[structopt(long, default_value = "0.6")]
+    #[structopt(long, default_value = "0.5")]
     /// Step over for each line
     step_over: f64,
 
-    #[structopt(long, default_value = "3.0")]
+    #[structopt(long, default_value = "2.5")]
     /// Size of each cube
     cube_size: f64,
 
@@ -47,7 +47,7 @@ struct Opt {
     name: Option<String>,
 
     /// Tool number for the cut
-    #[structopt(long, default_value = "17")]
+    #[structopt(long, default_value = "23")]
     tool: u32,
 
     /// Output file for the resulting G code
@@ -95,18 +95,13 @@ fn generate_cubes(opt: &Opt, file: &mut dyn Write) -> Result<()> {
     let height = opt.cube_size * (1.0 + DEG_30.sin());
     let nx = 2 * (opt.outer_rad / width).ceil() as usize;
     let ny = 2 * (opt.outer_rad / opt.cube_size) as usize;
-    g2_circle(
-        file,
-        xyzrf(0.0, 0.0, -opt.depth, opt.outer_rad, opt.feed),
-        1.0,
-    )?;
     for y in 0..ny {
         let cy = y as f64 * height - opt.outer_rad;
         gcode_comment(file, &format!("Row {y} at {cy}"))?;
         for x in 0..nx {
             let cx = x as f64 * width + (y % 2) as f64 * width / 2.0 - opt.outer_rad;
 
-            generate_cube(opt, file, cx, cy, &xyr(0.0, 0.0, opt.outer_rad * 0.8))?;
+            generate_cube(opt, file, cx, cy, &xyr(0.0, 0.0, opt.outer_rad * 0.82))?;
         }
     }
     Ok(())
@@ -118,7 +113,7 @@ fn tick_marks(opt: &Opt, file: &mut dyn Write) -> Result<()> {
 
     patterns::radial_tick_marks(
         file,
-        opt.outer_rad * 0.9,
+        opt.outer_rad * 0.92,
         outer_rad,
         60,
         &center,
@@ -128,7 +123,7 @@ fn tick_marks(opt: &Opt, file: &mut dyn Write) -> Result<()> {
 
     patterns::radial_tick_segments(
         file,
-        opt.outer_rad * 0.85,
+        opt.outer_rad * 0.88,
         outer_rad,
         12,
         &center,

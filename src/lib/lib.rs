@@ -344,6 +344,7 @@ pub struct PosXYIJ {
     y: Option<f64>,
     i: Option<f64>,
     j: Option<f64>,
+    z: Option<f64>,
     feed: Option<f64>,
 }
 
@@ -353,6 +354,18 @@ pub fn xyijf(x: f64, y: f64, i: f64, j: f64, feed: f64) -> PosXYIJ {
         y: Some(y),
         i: Some(i),
         j: Some(j),
+        z: None,
+        feed: Some(feed),
+    }
+}
+
+pub fn xyzijf(x: f64, y: f64, z: f64, i: f64, j: f64, feed: f64) -> PosXYIJ {
+    PosXYIJ {
+        x: Some(x),
+        y: Some(y),
+        i: Some(i),
+        j: Some(j),
+        z: Some(z),
         feed: Some(feed),
     }
 }
@@ -363,6 +376,7 @@ impl AsGVals for PosXYIJ {
         g_val(file, "Y", self.y)?;
         g_val(file, "I", self.i)?;
         g_val(file, "J", self.j)?;
+        g_val(file, "Z", self.z)?;
         g_val(file, "F", self.feed)?;
         Ok(())
     }
@@ -395,6 +409,26 @@ pub fn g2_circle(file: &mut dyn Write, center: PosRadiusAndFeed, safe_z: f64) ->
     let y = center.y.unwrap();
     let feed = center.feed.unwrap();
     g0(file, xyz(x0, y, safe_z))?;
+    g1(file, xyzf(x0, y, center.z.unwrap(), feed))?;
+    g2(file, xyijf(x0, y, x1, y, feed))?;
+    g1(file, zf(safe_z, feed))?;
+    Ok(())
+}
+
+/// Helical move/cutout path. Helixes down from safe_z to center.z in one circular move, then does another one at final z
+pub fn g2_helix(
+    file: &mut dyn Write,
+    center: PosRadiusAndFeed,
+    safe_z: f64,
+    helix_start_z: f64,
+) -> Result<()> {
+    let x0 = center.x.unwrap() + center.r.unwrap();
+    let x1 = center.x.unwrap() - center.r.unwrap();
+    let y = center.y.unwrap();
+    let feed = center.feed.unwrap();
+    g0(file, xyz(x0, y, safe_z))?;
+    g1(file, xyzf(x0, y, helix_start_z, feed))?;
+    g2(file, xyzijf(x0, y, center.z.unwrap(), x1, y, feed))?;
     g1(file, xyzf(x0, y, center.z.unwrap(), feed))?;
     g2(file, xyijf(x0, y, x1, y, feed))?;
     g1(file, zf(safe_z, feed))?;
