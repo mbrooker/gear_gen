@@ -1,7 +1,9 @@
 use anyhow::Result;
 use core::f64;
 use gcode::fonts::Font;
-use gcode::{a, g0, g1, gcode_comment, preamble, tool_change, trailer, xf, xy, xyf, xyza, xyzf, yf, zf};
+use gcode::{
+    a, g0, g1, gcode_comment, preamble, tool_change, trailer, xf, xy, xyf, xyza, xyzf, yf, zf,
+};
 use std::fs::OpenOptions;
 use std::io::{BufWriter, Write};
 use std::path::PathBuf;
@@ -9,7 +11,6 @@ use std::str::FromStr;
 use structopt::StructOpt;
 
 const DEG_30: f64 = f64::consts::PI / 6.0;
-const DEG_60: f64 = f64::consts::PI / 2.0;
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "cricket", about = "Makes cricket dice")]
@@ -32,9 +33,9 @@ struct Opt {
     #[structopt(long, default_value = "1000")]
     cutting_feed: f64,
 
-        /// Engraving feed rate, in mm/min
-        #[structopt(long, default_value = "300")]
-        engraving_feed: f64,
+    /// Engraving feed rate, in mm/min
+    #[structopt(long, default_value = "300")]
+    engraving_feed: f64,
 
     /// Name for the job
     #[structopt(short, long)]
@@ -51,10 +52,6 @@ struct Opt {
     /// Cutting tool width
     #[structopt(long, default_value = "6.35")]
     cutting_tool_dia: f64,
-
-    /// Output file for the resulting G code
-    #[structopt(short, long, parse(from_os_str))]
-    output: PathBuf,
 
     #[structopt(long)]
     coolant: bool,
@@ -100,14 +97,21 @@ fn make_hexagon_from_round(file: &mut dyn Write, opt: &Opt) -> Result<HexGeom> {
     }
 
     // Now knock the corners off to make the dice roll nicer
-    let corner_depth = z_depth / 4.0;
+    let corner_depth = z_depth / 3.5;
     gcode_comment(file, &format!("Corner chamfer at depth {corner_depth}"))?;
-    
+
     for corner in 0..6 {
         g0(file, xy(opt.cutting_tool_dia, 0.0))?;
         g0(file, a(60.0 * corner as f64 + 30.0))?;
         g1(file, zf(-corner_depth, opt.cutting_feed))?;
-        g1(file, xyf(-(opt.dice_len - opt.cutting_tool_dia / 2.5), 0.0, opt.cutting_feed))?;
+        g1(
+            file,
+            xyf(
+                -(opt.dice_len - opt.cutting_tool_dia / 2.5),
+                0.0,
+                opt.cutting_feed,
+            ),
+        )?;
         g1(file, zf(z_safe, opt.cutting_feed))?;
     }
     Ok(HexGeom { z_depth, chord_len })
@@ -123,7 +127,7 @@ fn engrave_text_on_hex(
     assert!(text.len() == 6);
     let z_safe = 1.0;
     let y_safe = geom.chord_len / 2.0 + 1.0;
-    let font_scale = geom.chord_len / 1.5;
+    let font_scale = geom.chord_len / 1.3;
     // First, go to a safe y and z and bring the A to zero
     g0(file, xyza(0.0, y_safe, z_safe, 0.0))?;
     for (i, line) in text.into_iter().enumerate() {
@@ -140,7 +144,12 @@ fn engrave_text_on_hex(
         font.string_to_gcode(
             file,
             line,
-            &xyzf(x_off, y_off, -geom.z_depth - opt.depth / 2.0, opt.engraving_feed),
+            &xyzf(
+                x_off,
+                y_off,
+                -geom.z_depth - opt.depth / 2.0,
+                opt.engraving_feed,
+            ),
             z_safe,
             font_scale,
         )?;
@@ -156,14 +165,13 @@ fn engrave_text_on_hex(
     Ok(())
 }
 
-fn main() -> Result<()> {
-    let opt = Opt::from_args();
+fn make_cricket_dice(filename: &str, text: &[&str], opt: &Opt, font: &Font) -> Result<()> {
     let mut file = BufWriter::new(
         OpenOptions::new()
             .write(true)
             .create(true)
             .truncate(true)
-            .open(&opt.output)?,
+            .open(&filename)?,
     );
 
     preamble(
@@ -174,13 +182,23 @@ fn main() -> Result<()> {
         opt.coolant,
         &mut file,
     )?;
-    let font = Font::new_from_svg(&PathBuf::from_str("EMSReadability.svg")?)?;
+
     let geom = make_hexagon_from_round(&mut file, &opt)?;
-    let text = &["ONE", "TWO", "THREE", "FOUR", "SIX", "HOWZAT!"];
+
     tool_change(&mut file, opt.engraving_tool, opt.rpm)?;
     engrave_text_on_hex(&mut file, text, &opt, geom, &font)?;
     trailer(&mut file)?;
 
     file.flush()?;
+    Ok(())
+}
+
+fn main() -> Result<()> {
+    let opt = Opt::from_args();
+    let font = Font::new_from_svg(&PathBuf::from_str("EMSReadability.svg")?)?;
+    let runs_text = &["ONE", "TWO", "THREE", "FOUR", "SIX", "HOWZAT!"];
+    make_cricket_dice("cricket_runs.nc", runs_text, &opt, &font)?;
+    let wicket_text = &["RUN OUT", "NOT OUT!", "CAUGHT", "STUMPED", "BOWLED", "LBW"];
+    make_cricket_dice("cricket_wicket.nc", wicket_text, &opt, &font)?;
     Ok(())
 }

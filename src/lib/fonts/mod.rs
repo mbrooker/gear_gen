@@ -3,7 +3,7 @@ use roxmltree::{Document, ParsingOptions};
 use std::fs::read_to_string;
 use std::{collections::HashMap, io::Write, path::PathBuf};
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 
 pub struct Font {
     glyphs: HashMap<char, Glyph>,
@@ -64,7 +64,7 @@ impl Font {
             let glyph = self.glyphs.get(&c).unwrap();
             // Feed to the first move, and then feed in
             g0(file, xyz(x_off, y_off, safe_z))?;
-            
+
             for m in &glyph.moves {
                 let x = x_off + m.x * scale;
                 let y = y_off + m.y * scale;
@@ -198,6 +198,6 @@ fn parse_svg_xml_font(path: &PathBuf) -> Result<Font> {
         glyphs,
         x_height: x_height / units_per_em,
         ascent: ascent / units_per_em,
-        descent: ascent / units_per_em,
+        descent: descent / units_per_em,
     })
 }
