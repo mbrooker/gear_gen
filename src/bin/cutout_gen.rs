@@ -2,8 +2,8 @@
 //!
 use core::f64;
 use gcode::{
-    g2_circle, g2_helix, gcode_comment, patterns, preamble, trailer, trimmed_g1_path, xy, xyf, xyr,
-    xyzrf, PosRadiusAndFeed,
+    g2_helix, preamble, trailer,
+    xyzrf,
 };
 use std::fs::OpenOptions;
 use std::io::{BufWriter, Result, Write};

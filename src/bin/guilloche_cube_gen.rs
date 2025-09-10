@@ -2,7 +2,7 @@
 //!
 use core::f64;
 use gcode::{
-    g2_circle, gcode_comment, patterns, preamble, trailer, trimmed_g1_path, xy, xyf, xyr, xyzrf,
+    gcode_comment, patterns, preamble, trailer, trimmed_g1_path, xy, xyf, xyr,
     PosRadiusAndFeed,
 };
 use std::fs::OpenOptions;

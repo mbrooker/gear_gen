@@ -130,7 +130,7 @@ fn engrave_text_on_hex(
     let font_scale = geom.chord_len / 1.3;
     // First, go to a safe y and z and bring the A to zero
     g0(file, xyza(0.0, y_safe, z_safe, 0.0))?;
-    for (i, line) in text.into_iter().enumerate() {
+    for (i, line) in text.iter().enumerate() {
         // Get the line width
         let str_len = font.string_len(line) * font_scale;
         println!("{line} len {str_len}");
@@ -171,7 +171,7 @@ fn make_cricket_dice(filename: &str, text: &[&str], opt: &Opt, font: &Font) -> R
             .write(true)
             .create(true)
             .truncate(true)
-            .open(&filename)?,
+            .open(filename)?,
     );
 
     preamble(
@@ -183,10 +183,10 @@ fn make_cricket_dice(filename: &str, text: &[&str], opt: &Opt, font: &Font) -> R
         &mut file,
     )?;
 
-    let geom = make_hexagon_from_round(&mut file, &opt)?;
+    let geom = make_hexagon_from_round(&mut file, opt)?;
 
     tool_change(&mut file, opt.engraving_tool, opt.rpm)?;
-    engrave_text_on_hex(&mut file, text, &opt, geom, &font)?;
+    engrave_text_on_hex(&mut file, text, opt, geom, font)?;
     trailer(&mut file)?;
 
     file.flush()?;

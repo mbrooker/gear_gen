@@ -105,9 +105,7 @@ fn parse_svg_xml_font(path: &PathBuf) -> Result<Font> {
     let mut glyphs = HashMap::new();
     // Get the x-height
     let x_height = doc
-        .descendants()
-        .filter(|n| n.is_element() && n.tag_name().name() == "font-face")
-        .next()
+        .descendants().find(|n| n.is_element() && n.tag_name().name() == "font-face")
         .unwrap()
         .attribute("x-height")
         .unwrap()
@@ -115,9 +113,7 @@ fn parse_svg_xml_font(path: &PathBuf) -> Result<Font> {
         .unwrap();
     // Get units per em
     let units_per_em = doc
-        .descendants()
-        .filter(|n| n.is_element() && n.tag_name().name() == "font-face")
-        .next()
+        .descendants().find(|n| n.is_element() && n.tag_name().name() == "font-face")
         .unwrap()
         .attribute("units-per-em")
         .unwrap()
@@ -125,9 +121,7 @@ fn parse_svg_xml_font(path: &PathBuf) -> Result<Font> {
         .unwrap();
     // Get Ascent
     let ascent = doc
-        .descendants()
-        .filter(|n| n.is_element() && n.tag_name().name() == "font-face")
-        .next()
+        .descendants().find(|n| n.is_element() && n.tag_name().name() == "font-face")
         .unwrap()
         .attribute("ascent")
         .unwrap()
@@ -135,9 +129,7 @@ fn parse_svg_xml_font(path: &PathBuf) -> Result<Font> {
         .unwrap();
     // Get Descent
     let descent = doc
-        .descendants()
-        .filter(|n| n.is_element() && n.tag_name().name() == "font-face")
-        .next()
+        .descendants().find(|n| n.is_element() && n.tag_name().name() == "font-face")
         .unwrap()
         .attribute("descent")
         .unwrap()
