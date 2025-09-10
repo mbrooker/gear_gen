@@ -1,8 +1,7 @@
 use anyhow::Result;
 use core::f64;
 use gcode::fonts::Font;
-use gcode::{a, g0, g1, gcode_comment, preamble, trailer, xf, xyz, xyza, xyzf, yf, zf};
-use nalgebra::geometry;
+use gcode::{a, g0, g1, gcode_comment, preamble, tool_change, trailer, xf, xyz, xyza, xyzf, yf, zf};
 use std::fs::OpenOptions;
 use std::io::{BufWriter, Write};
 use std::path::PathBuf;
@@ -15,7 +14,7 @@ const DEG_60: f64 = f64::consts::PI / 2.0;
 #[derive(Debug, StructOpt)]
 #[structopt(name = "cricket", about = "Makes cricket dice")]
 struct Opt {
-    #[structopt(long, default_value = "12.7")]
+    #[structopt(long, default_value = "9.52")]
     stock_rad: f64,
 
     #[structopt(long, default_value = "40.0")]
@@ -38,7 +37,7 @@ struct Opt {
     name: Option<String>,
 
     /// Tool number for the hexagonal cut
-    #[structopt(long, default_value = "1")]
+    #[structopt(long, default_value = "15")]
     cutting_tool: u32,
 
     /// Tool number for the engraving cuts
@@ -67,7 +66,7 @@ fn make_hexagon_from_round(file: &mut dyn Write, opt: &Opt) -> Result<HexGeom> {
     let chord_len = 2.0 * opt.stock_rad * DEG_30.sin();
     let y_cut_width = (chord_len + opt.cutting_tool_dia) / 2.0 + 1.0;
     let z_safe = 1.0;
-    let z_depth = opt.stock_rad * (1.0 - DEG_30.cos());
+    let z_depth = opt.stock_rad * (1.0 - DEG_30.cos()) + 0.1;
 
     // First, go to a safe y and z and bring the A to zero
     g0(file, xyza(0.0, y_cut_width, z_safe, 0.0))?;
@@ -107,15 +106,17 @@ fn engrave_text_on_hex(
     assert!(text.len() == 6);
     let z_safe = 1.0;
     let y_safe = geom.chord_len / 2.0 + 1.0;
+    let font_scale = geom.chord_len / 1.5;
     // First, go to a safe y and z and bring the A to zero
     g0(file, xyza(0.0, y_safe, z_safe, 0.0))?;
     for (i, line) in text.into_iter().enumerate() {
         // Get the line width
-        let str_len = font.string_len(line);
+        let str_len = font.string_len(line) * font_scale;
+        println!("{line} len {str_len}");
         assert!(str_len < opt.dice_len);
         // Calculate the x and y offsets to get the string nicely centered
-        let x_off = (opt.dice_len - str_len) / 2.0;
-        let y_off = -font.ascent / 2.0;
+        let x_off = -(opt.dice_len + str_len) / 2.0;
+        let y_off = -font.ascent * font_scale / 2.0;
         // Go to the correct A angle
         g0(file, a(60.0 * i as f64))?;
         // Now engrave the string
@@ -124,7 +125,7 @@ fn engrave_text_on_hex(
             line,
             &xyzf(x_off, y_off, -geom.z_depth - opt.depth, opt.feed),
             z_safe,
-            geom.chord_len / 2.0,
+            font_scale,
         )?;
     }
 
@@ -152,6 +153,7 @@ fn main() -> Result<()> {
     let font = Font::new_from_svg(&PathBuf::from_str("EMSReadability.svg")?)?;
     let geom = make_hexagon_from_round(&mut file, &opt)?;
     let text = &["ONE", "TWO", "THREE", "FOUR", "SIX", "HOWZAT!"];
+    tool_change(&mut file, opt.engraving_tool, opt.rpm)?;
     engrave_text_on_hex(&mut file, text, &opt, geom, &font)?;
     trailer(&mut file)?;
 

@@ -68,7 +68,7 @@ impl Font {
 
             for m in &glyph.moves {
                 let x = x_off + m.x * scale;
-                let y = m.y * scale;
+                let y = y_off + m.y * scale;
                 match m.move_type {
                     MoveType::Move => {
                         // A move is a feed out, move, feed in

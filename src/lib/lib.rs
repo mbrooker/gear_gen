@@ -230,7 +230,7 @@ pub fn zaf(z: f64, a: f64, feed: f64) -> PosAndFeed {
 
 impl AsGVals for PosAndFeed {
     fn as_gvals(&self, file: &mut dyn Write) -> Result<()> {
-        if self.x.is_none() && self.y.is_none() && self.z.is_none() {
+        if self.x.is_none() && self.y.is_none() && self.z.is_none() && self.a.is_none() {
             panic!("Refusing to make illegal move");
         }
         g_val(file, "X", self.x)?;
