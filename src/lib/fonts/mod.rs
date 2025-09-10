@@ -1,4 +1,4 @@
-use crate::{g0, g1, gcode_comment, xy, xyf, xyz, z, zf};
+use crate::{g0, g1, gcode_comment, xy, xyf, xyz, z, zf, PosAndFeed};
 use roxmltree::{Document, ParsingOptions};
 use std::fs::read_to_string;
 use std::{collections::HashMap, io::Write, path::PathBuf};
@@ -11,6 +11,7 @@ pub struct Font {
     units_per_em: f64,
 }
 
+#[derive(Debug)]
 pub struct Glyph {
     moves: Vec<Move>,
     width: f64,
@@ -22,6 +23,7 @@ enum MoveType {
     Line,
 }
 
+#[derive(Debug, Clone)]
 pub struct Move {
     move_type: MoveType,
     x: f64,
@@ -37,31 +39,39 @@ impl Font {
         &self,
         file: &mut dyn Write,
         s: &str,
-        depth: f64,
+        pos_and_feed: &PosAndFeed,
         safe_z: f64,
-        feed: f64,
+
         scale: f64,
     ) -> Result<()> {
-        let mut x_off = 0.0;
+        let depth = pos_and_feed.z.unwrap();
+        let feed = pos_and_feed.feed.unwrap();
+
+        let mut x_off = pos_and_feed.x.unwrap();
+        let y_off = pos_and_feed.y.unwrap();
         // For each character in the string, get the glyph and write the moves to the file
         for c in s.chars() {
             gcode_comment(file, &format!("Writing '{c}'"))?;
+
             let glyph = self.glyphs.get(&c).unwrap();
             // Feed to the first move, and then feed in
-            g0(file, xyz(x_off, 0.0, safe_z))?;
+            g0(file, xyz(x_off, y_off, safe_z))?;
             g1(file, zf(depth, feed))?;
 
             for m in &glyph.moves {
+                let x = x_off + m.x * scale;
+                let y = m.y * scale;
                 match m.move_type {
                     MoveType::Move => {
                         // A move is a feed out, move, feed in
                         g0(file, z(safe_z))?;
-                        g0(file, xy(x_off + m.x * scale, m.y * scale))?;
+
+                        g0(file, xy(x, y))?;
                         g1(file, zf(depth, feed))?;
                     }
                     MoveType::Line => {
                         // A line is a straight in-situ move
-                        g1(file, xyf(x_off + m.x * scale, m.y * scale, feed))?;
+                        g1(file, xyf(x, y, feed))?;
                     }
                 }
             }
@@ -133,7 +143,7 @@ fn parse_svg_xml_font(path: &PathBuf) -> Result<Font> {
                             x = Some(v);
                         } else if y.is_none() {
                             y = Some(v);
-                        } else {
+
                             // We have both x and y, so we can create a Move
                             moves.push(Move {
                                 move_type: move_type.clone(),
@@ -146,7 +156,6 @@ fn parse_svg_xml_font(path: &PathBuf) -> Result<Font> {
                     }
                 }
             }
-            // Example entry
 
             glyphs.insert(
                 name,

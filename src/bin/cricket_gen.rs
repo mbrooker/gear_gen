@@ -69,7 +69,7 @@ struct Opt {
 
 fn engrave_text(file: &mut dyn Write, opt: &Opt, font: &Font, s: &str) -> Result<()> {
     let safe_z = 1.0;
-    font.string_to_gcode(file, s, opt.depth, safe_z, opt.feed, 5.0)?;
+    font.string_to_gcode(file, s, &xyzf(0.0, 0.0, opt.depth, opt.feed), safe_z, 5.0)?;
     Ok(())
 }
 
