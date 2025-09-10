@@ -7,8 +7,12 @@ use anyhow::{Context, Result};
 
 pub struct Font {
     glyphs: HashMap<char, Glyph>,
-    x_height: f64,
-    units_per_em: f64,
+    // 'x' height, normalized into ems
+    pub x_height: f64,
+    // 'ascent', normalized into ems
+    pub ascent: f64,
+    // 'descent', normalized into ems
+    pub descent: f64,
 }
 
 #[derive(Debug)]
@@ -33,6 +37,10 @@ pub struct Move {
 impl Font {
     pub fn new_from_svg(path: &PathBuf) -> Result<Self> {
         parse_svg_xml_font(path)
+    }
+
+    pub fn string_len(&self, s: &str) -> f64 {
+        s.chars().map(|c| self.glyphs.get(&c).unwrap().width).sum()
     }
 
     pub fn string_to_gcode(
@@ -116,6 +124,26 @@ fn parse_svg_xml_font(path: &PathBuf) -> Result<Font> {
         .unwrap()
         .parse::<f64>()
         .unwrap();
+    // Get Ascent
+    let ascent = doc
+        .descendants()
+        .filter(|n| n.is_element() && n.tag_name().name() == "font-face")
+        .next()
+        .unwrap()
+        .attribute("ascent")
+        .unwrap()
+        .parse::<f64>()
+        .unwrap();
+    // Get Descent
+    let descent = doc
+        .descendants()
+        .filter(|n| n.is_element() && n.tag_name().name() == "font-face")
+        .next()
+        .unwrap()
+        .attribute("descent")
+        .unwrap()
+        .parse::<f64>()
+        .unwrap();
 
     doc.descendants()
         .filter(|n| n.is_element() && n.tag_name().name() == "glyph")
@@ -169,7 +197,8 @@ fn parse_svg_xml_font(path: &PathBuf) -> Result<Font> {
 
     Ok(Font {
         glyphs,
-        x_height,
-        units_per_em,
+        x_height: x_height / units_per_em,
+        ascent: ascent / units_per_em,
+        descent: ascent / units_per_em,
     })
 }

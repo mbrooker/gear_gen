@@ -49,6 +49,21 @@ G21 (Metric)
 G30 (Go Home Before Starting)
     ";
     write!(file, "{preamble_str}\n\n")?;
+    tool_change(file, tool, rpm)?;
+
+    // If chosen, start coolant flowing
+    if coolant {
+        writeln!(file, "M8")?;
+    }
+
+    Ok(())
+}
+
+pub fn tool_change(file: &mut dyn Write, tool: u32, rpm: f64) -> Result<()> {
+    // First, turn off the spindle
+    writeln!(file, "M5 (Spindle off)")?;
+    // Then do a stop for the user to change the tool
+    writeln!(file, "M0 (stop for tool change)")?;
     // Print the tool mode preamble, choosing the tool,
     // enabling length compensation,
     // and executing the tool change cycle
@@ -56,11 +71,6 @@ G30 (Go Home Before Starting)
 
     // Print the Speed preamble, and turn on the spindle
     writeln!(file, "S{rpm} M3")?;
-
-    // If chosen, start coolant flowing
-    if coolant {
-        writeln!(file, "M8")?;
-    }
 
     Ok(())
 }
@@ -88,6 +98,16 @@ pub fn x(x: f64) -> PosAndFeed {
     }
 }
 
+pub fn a(a: f64) -> PosAndFeed {
+    PosAndFeed {
+        x: None,
+        y: None,
+        z: None,
+        a: Some(a),
+        feed: None,
+    }
+}
+
 pub fn xaf(x: f64, a: f64, feed: f64) -> PosAndFeed {
     PosAndFeed {
         x: Some(x),
@@ -102,6 +122,16 @@ pub fn xf(x: f64, feed: f64) -> PosAndFeed {
     PosAndFeed {
         x: Some(x),
         y: None,
+        z: None,
+        a: None,
+        feed: Some(feed),
+    }
+}
+
+pub fn yf(y: f64, feed: f64) -> PosAndFeed {
+    PosAndFeed {
+        x: None,
+        y: Some(y),
         z: None,
         a: None,
         feed: Some(feed),
