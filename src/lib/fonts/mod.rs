@@ -64,20 +64,19 @@ impl Font {
             let glyph = self.glyphs.get(&c).unwrap();
             // Feed to the first move, and then feed in
             g0(file, xyz(x_off, y_off, safe_z))?;
-            g1(file, zf(depth, feed))?;
-
+            
             for m in &glyph.moves {
                 let x = x_off + m.x * scale;
                 let y = y_off + m.y * scale;
                 match m.move_type {
                     MoveType::Move => {
-                        // A move is a feed out, move, feed in
+                        // A move is a feed out then move
                         g0(file, z(safe_z))?;
-
                         g0(file, xy(x, y))?;
-                        g1(file, zf(depth, feed))?;
                     }
                     MoveType::Line => {
+                        // Lines done at depth
+                        g1(file, zf(depth, feed))?;
                         // A line is a straight in-situ move
                         g1(file, xyf(x, y, feed))?;
                     }

@@ -10,6 +10,7 @@ pub fn gcode_comment(file: &mut dyn Write, s: &str) -> Result<()> {
 }
 
 pub fn trailer(file: &mut dyn Write) -> Result<()> {
+    writeln!(file, "G30 (Go Home)")?;
     writeln!(file, "M9 (Coolant off)")?;
     writeln!(file, "M5 (Spindle off)")?;
     writeln!(file, "M30")?;
@@ -62,6 +63,8 @@ G30 (Go Home Before Starting)
 pub fn tool_change(file: &mut dyn Write, tool: u32, rpm: f64) -> Result<()> {
     // First, turn off the spindle
     writeln!(file, "M5 (Spindle off)")?;
+    // Go home
+    writeln!(file, "G30 (Go Home)")?;
     // Then do a stop for the user to change the tool
     writeln!(file, "M0 (stop for tool change)")?;
     // Print the tool mode preamble, choosing the tool,

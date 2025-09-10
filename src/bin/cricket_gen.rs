@@ -1,7 +1,7 @@
 use anyhow::Result;
 use core::f64;
 use gcode::fonts::Font;
-use gcode::{a, g0, g1, gcode_comment, preamble, tool_change, trailer, xf, xyz, xyza, xyzf, yf, zf};
+use gcode::{a, g0, g1, gcode_comment, preamble, tool_change, trailer, xf, xy, xyf, xyza, xyzf, yf, zf};
 use std::fs::OpenOptions;
 use std::io::{BufWriter, Write};
 use std::path::PathBuf;
@@ -20,7 +20,7 @@ struct Opt {
     #[structopt(long, default_value = "40.0")]
     dice_len: f64,
 
-    #[structopt(long, default_value = "0.1")]
+    #[structopt(long, default_value = "0.25")]
     /// Depth for engraving
     depth: f64,
 
@@ -28,9 +28,13 @@ struct Opt {
     #[structopt(long, default_value = "8000")]
     rpm: f64,
 
-    /// Feed rate, in mm/min
-    #[structopt(long, default_value = "300")]
-    feed: f64,
+    /// Cutting feed rate, in mm/min
+    #[structopt(long, default_value = "1000")]
+    cutting_feed: f64,
+
+        /// Engraving feed rate, in mm/min
+        #[structopt(long, default_value = "300")]
+        engraving_feed: f64,
 
     /// Name for the job
     #[structopt(short, long)]
@@ -71,28 +75,41 @@ fn make_hexagon_from_round(file: &mut dyn Write, opt: &Opt) -> Result<HexGeom> {
     // First, go to a safe y and z and bring the A to zero
     g0(file, xyza(0.0, y_cut_width, z_safe, 0.0))?;
 
+    gcode_comment(file, &format!("Faces at depth {z_depth}"))?;
+    // Cut the faces
     for face in 0..6 {
         // Go to the right face angle
         g0(file, a(60.0 * face as f64))?;
         // Feed in to cutting z
-        g1(file, zf(-z_depth, opt.feed))?;
+        g1(file, zf(-z_depth, opt.cutting_feed))?;
         // Calculate the number of passes, and the stepover per pass, slightly less than half the tool width
         let passes = (2.5 * opt.dice_len / opt.cutting_tool_dia).ceil();
         let pass_step = opt.dice_len / passes;
         let mut x = 0.0;
         for pass in 0..passes as usize {
-            g1(file, xf(x, opt.feed))?;
+            g1(file, xf(x, opt.cutting_feed))?;
             if pass % 2 == 0 {
-                g1(file, yf(-y_cut_width, opt.feed))?;
+                g1(file, yf(-y_cut_width, opt.cutting_feed))?;
             } else {
-                g1(file, yf(y_cut_width, opt.feed))?;
+                g1(file, yf(y_cut_width, opt.cutting_feed))?;
             }
             x -= pass_step;
         }
         // Feed out to safe z
-        g1(file, zf(z_safe, opt.feed))?;
+        g1(file, zf(z_safe, opt.cutting_feed))?;
     }
 
+    // Now knock the corners off to make the dice roll nicer
+    let corner_depth = z_depth / 4.0;
+    gcode_comment(file, &format!("Corner chamfer at depth {corner_depth}"))?;
+    
+    for corner in 0..6 {
+        g0(file, xy(opt.cutting_tool_dia, 0.0))?;
+        g0(file, a(60.0 * corner as f64 + 30.0))?;
+        g1(file, zf(-corner_depth, opt.cutting_feed))?;
+        g1(file, xyf(-(opt.dice_len - opt.cutting_tool_dia / 2.5), 0.0, opt.cutting_feed))?;
+        g1(file, zf(z_safe, opt.cutting_feed))?;
+    }
     Ok(HexGeom { z_depth, chord_len })
 }
 
@@ -119,11 +136,18 @@ fn engrave_text_on_hex(
         let y_off = -font.ascent * font_scale / 2.0;
         // Go to the correct A angle
         g0(file, a(60.0 * i as f64))?;
-        // Now engrave the string
+        // Now engrave the string, in two passes
         font.string_to_gcode(
             file,
             line,
-            &xyzf(x_off, y_off, -geom.z_depth - opt.depth, opt.feed),
+            &xyzf(x_off, y_off, -geom.z_depth - opt.depth / 2.0, opt.engraving_feed),
+            z_safe,
+            font_scale,
+        )?;
+        font.string_to_gcode(
+            file,
+            line,
+            &xyzf(x_off, y_off, -geom.z_depth - opt.depth, opt.engraving_feed),
             z_safe,
             font_scale,
         )?;
