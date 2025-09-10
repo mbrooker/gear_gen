@@ -13,6 +13,8 @@ pub struct Font {
     pub ascent: f64,
     // 'descent', normalized into ems
     pub descent: f64,
+    // height of 'T', normalized into ems
+    pub t_height: f64,
 }
 
 #[derive(Debug)]
@@ -91,6 +93,19 @@ impl Font {
     }
 }
 
+fn get_font_face_attrib(doc: &Document, attrib_name: &str) -> Result<f64> {
+    doc.descendants()
+        .find(|n| n.is_element() && n.tag_name().name() == "font-face")
+        .and_then(|n| n.attribute(attrib_name))
+        .and_then(|s| s.parse::<f64>().ok())
+        .ok_or_else(|| {
+            anyhow::anyhow!(
+                "Failed to find or parse font-face attribute: {}",
+                attrib_name
+            )
+        })
+}
+
 fn parse_svg_xml_font(path: &PathBuf) -> Result<Font> {
     // Parse the svg xml path using Roxmltree
     let data = read_to_string(path)?;
@@ -103,38 +118,13 @@ fn parse_svg_xml_font(path: &PathBuf) -> Result<Font> {
     )?;
 
     let mut glyphs = HashMap::new();
-    // Get the x-height
-    let x_height = doc
-        .descendants().find(|n| n.is_element() && n.tag_name().name() == "font-face")
-        .unwrap()
-        .attribute("x-height")
-        .unwrap()
-        .parse::<f64>()
-        .unwrap();
-    // Get units per em
-    let units_per_em = doc
-        .descendants().find(|n| n.is_element() && n.tag_name().name() == "font-face")
-        .unwrap()
-        .attribute("units-per-em")
-        .unwrap()
-        .parse::<f64>()
-        .unwrap();
-    // Get Ascent
-    let ascent = doc
-        .descendants().find(|n| n.is_element() && n.tag_name().name() == "font-face")
-        .unwrap()
-        .attribute("ascent")
-        .unwrap()
-        .parse::<f64>()
-        .unwrap();
-    // Get Descent
-    let descent = doc
-        .descendants().find(|n| n.is_element() && n.tag_name().name() == "font-face")
-        .unwrap()
-        .attribute("descent")
-        .unwrap()
-        .parse::<f64>()
-        .unwrap();
+
+    // Extract font face attributes using the helper method
+    let units_per_em = get_font_face_attrib(&doc, "units-per-em")?;
+    let x_height = get_font_face_attrib(&doc, "x-height")? / units_per_em;
+
+    let ascent = get_font_face_attrib(&doc, "ascent")? / units_per_em;
+    let descent = get_font_face_attrib(&doc, "descent")? / units_per_em;
 
     doc.descendants()
         .filter(|n| n.is_element() && n.tag_name().name() == "glyph")
@@ -186,10 +176,27 @@ fn parse_svg_xml_font(path: &PathBuf) -> Result<Font> {
             );
         });
 
+    let t_height = glyphs.get(&'T').unwrap().height();
+    println!("Loaded font with {} glyphs, x height {x_height}, ascent {ascent}, descent {descent}, T height {t_height}", glyphs.len());
     Ok(Font {
         glyphs,
-        x_height: x_height / units_per_em,
-        ascent: ascent / units_per_em,
-        descent: descent / units_per_em,
+        x_height: x_height,
+        ascent: ascent,
+        descent: descent,
+        t_height,
     })
+}
+
+impl Glyph {
+    pub fn height(&self) -> f64 {
+        (self.moves.iter().map(|m| m.y).reduce(f64::max).unwrap()
+            - self
+                .moves
+                .iter()
+                .map(|m| m.y)
+                .reduce(f64::min)
+                .unwrap()
+                .abs())
+        .abs()
+    }
 }

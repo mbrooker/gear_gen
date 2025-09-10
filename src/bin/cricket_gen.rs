@@ -137,7 +137,7 @@ fn engrave_text_on_hex(
         assert!(str_len < opt.dice_len);
         // Calculate the x and y offsets to get the string nicely centered
         let x_off = -(opt.dice_len + str_len) / 2.0;
-        let y_off = -font.ascent * font_scale / 2.0;
+        let y_off = -font.t_height * font_scale / 2.0;
         // Go to the correct A angle
         g0(file, a(60.0 * i as f64))?;
         // Now engrave the string, in two passes
