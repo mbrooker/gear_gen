@@ -1,6 +1,7 @@
 use std::io::{Result, Write};
 
 use crate::geometry::{trim, Circle, LineSegment};
+pub mod fonts;
 mod geometry;
 pub mod patterns;
 

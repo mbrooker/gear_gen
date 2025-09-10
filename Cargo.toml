@@ -8,6 +8,8 @@ edition = "2018"
 [dependencies]
 structopt = { version = "0.3" }
 nalgebra = { version = "0.34" }
+roxmltree = "0.20"
+anyhow = "1.0"
 
 [lib]
 name = "gcode"
