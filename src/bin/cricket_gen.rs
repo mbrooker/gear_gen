@@ -135,7 +135,7 @@ fn chamfer(file: &mut dyn Write, opt: &Opt, geom: &HexGeom) -> Result<()> {
     let z_safe = 1.0;
     let chamfer_offset = opt.cutting_tool_dia / 4.0;
     let chamfer_edge_width = 1.0;
-    let chamfer_depth = -geom.z_depth - chamfer_offset - chamfer_edge_width / 2.0_f64.sqrt();
+    let chamfer_depth = -geom.z_depth - chamfer_offset - chamfer_edge_width * 2.0_f64.sqrt();
     // Tool change to the chamfering tool
     tool_change(file, opt.chamfer_tool, opt.rpm)?;
     // First, go to a safe y and z and bring the A to zero
@@ -154,8 +154,9 @@ fn chamfer(file: &mut dyn Write, opt: &Opt, geom: &HexGeom) -> Result<()> {
         g1(file, yf(-geom.y_cut_width, opt.cutting_feed))?;
         // Feed out to safe z
         g1(file, zf(z_safe, opt.cutting_feed))?;
+
         // Rapid to the other end
-        g0(file, xy(-opt.dice_len - chamfer_offset, geom.y_cut_width))?;
+        g0(file, xy(-opt.dice_len + chamfer_offset, geom.y_cut_width))?;
         // Feed in to cutting z
         g1(file, zf(chamfer_depth, opt.cutting_feed))?;
         // Cut along y- direction
@@ -224,6 +225,7 @@ fn engrave_text_on_hex(
     let z_safe = 1.0;
     let y_safe = geom.chord_len / 2.0 + 1.0;
     let font_scale = geom.chord_len / 1.3;
+    tool_change(file, opt.engraving_tool, opt.rpm)?;
     // First, go to a safe y and z and bring the A to zero
     g0(file, xyza(0.0, y_safe, z_safe, 0.0))?;
     for (i, line) in text.iter().enumerate() {
@@ -232,7 +234,7 @@ fn engrave_text_on_hex(
         println!("{line} len {str_len}");
         assert!(str_len < opt.dice_len);
         // Calculate the x and y offsets to get the string nicely centered
-        let x_off = -(opt.dice_len + str_len) / 2.0;
+        let x_off = -(opt.dice_len + str_len - opt.cutting_tool_dia / 2.0) / 2.0;
         let y_off = -font.t_height * font_scale / 2.0;
         // Go to the correct A angle
         g0(file, a(60.0 * i as f64))?;
@@ -282,8 +284,6 @@ fn make_cricket_dice(filename: &str, text: &[&str], opt: &Opt, font: &Font) -> R
     let geom = calc_hex_geom(opt);
 
     make_hexagon_from_round(&mut file, opt, &geom)?;
-
-    tool_change(&mut file, opt.engraving_tool, opt.rpm)?;
     engrave_text_on_hex(&mut file, text, opt, &geom, font)?;
     offcut(&mut file, opt)?;
     chamfer(&mut file, opt, &geom)?;
