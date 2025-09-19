@@ -1,10 +1,7 @@
 //! G-Code generator for cutting out watch dials
 //!
 use core::f64;
-use gcode::{
-    g2_helix, preamble, trailer,
-    xyzrf,
-};
+use gcode::{g2_helix, preamble, trailer, xyzrf};
 use std::fs::OpenOptions;
 use std::io::{BufWriter, Result, Write};
 use std::path::PathBuf;

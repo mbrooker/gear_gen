@@ -111,6 +111,16 @@ pub fn a(a: f64) -> PosAndFeed {
     }
 }
 
+pub fn af(a: f64, feed: f64) -> PosAndFeed {
+    PosAndFeed {
+        x: None,
+        y: None,
+        z: None,
+        a: Some(a),
+        feed: Some(feed),
+    }
+}
+
 pub fn xaf(x: f64, a: f64, feed: f64) -> PosAndFeed {
     PosAndFeed {
         x: Some(x),
